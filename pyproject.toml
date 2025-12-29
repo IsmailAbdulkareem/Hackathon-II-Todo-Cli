@@ -1,0 +1,29 @@
+[project]
+name = "todo-evolution"
+version = "0.1.0"
+description = "The Evolution of Todo - Spec-Driven, Cloud-Native AI Application (Phase I)"
+readme = "README.md"
+requires-python = ">=3.13"
+authors = [
+    {name = "Todo Evolution Team"}
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.13",
+]
+dependencies = []
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.uv]
+# UV-specific configuration
+dev-dependencies = []
+
+[project.urls]
+"Homepage" = "https://github.com/yourusername/todo-evolution"
+"Bug Tracker" = "https://github.com/yourusername/todo-evolution/issues"
+"Documentation" = "https://github.com/yourusername/todo-evolution/blob/main/README.md"
