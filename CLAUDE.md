@@ -214,6 +214,8 @@ See `.specify/memory/constitution.md` for code quality, testing, performance, se
 - N/A (environment setup feature) (001-env-setup)
 - Python 3.13+ + None (Python standard library only) (002-todo-cli)
 - In-memory (Python dict, no persistence) (002-todo-cli)
+- TypeScript / Node.js 20+ + Next.js 16+, React 19, Tailwind CSS, Framer Motion, Lucide React (001-frontend-ui)
+- Local State (browser session) (001-frontend-ui)
 
 ## Recent Changes
 - 001-env-setup: Added Python 3.13 or higher + None (uv for environment management only)
