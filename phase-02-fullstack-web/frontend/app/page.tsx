@@ -4,12 +4,9 @@ import { useTodos } from '@/hooks/use-todos';
 import { TodoForm } from '@/components/todo/todo-form';
 import { TodoList } from '@/components/todo/todo-list';
 import { Layout } from 'lucide-react';
-import { useState } from 'react';
-import { Task } from '@/types/todo';
 
 export default function Home() {
-  const { tasks, addTask, updateTask, toggleTask, deleteTask, isInitialized } = useTodos();
-  const [editingTask, setEditingTask] = useState<Task | null>(null);
+  const { tasks, addTask, toggleTask, deleteTask, isInitialized } = useTodos();
 
   if (!isInitialized) {
     return (
@@ -18,15 +15,6 @@ export default function Home() {
       </div>
     );
   }
-
-  const handleFormSubmit = (data: any) => {
-    if (editingTask) {
-      updateTask(editingTask.id, data);
-      setEditingTask(null);
-    } else {
-      addTask(data);
-    }
-  };
 
   return (
     <main className="min-h-screen bg-neutral-50 dark:bg-neutral-950 p-4 md:p-8">
@@ -53,22 +41,10 @@ export default function Home() {
         <section className="space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-semibold flex items-center gap-2">
-              {editingTask ? 'Edit Task' : 'Add New Task'}
+              Add New Task
             </h2>
-            {editingTask && (
-              <button
-                onClick={() => setEditingTask(null)}
-                className="text-xs text-muted-foreground hover:underline"
-              >
-                Cancel Edit
-              </button>
-            )}
           </div>
-          <TodoForm
-            onSubmit={handleFormSubmit}
-            initialData={editingTask || undefined}
-            key={editingTask ? `edit-${editingTask.id}` : 'add-new'}
-          />
+          <TodoForm onSubmit={addTask} />
         </section>
 
         <section className="space-y-4">
@@ -84,7 +60,7 @@ export default function Home() {
             tasks={tasks}
             onToggle={toggleTask}
             onDelete={deleteTask}
-            onEdit={setEditingTask}
+            onEdit={(task) => console.log('Edit', task)}
           />
         </section>
       </div>

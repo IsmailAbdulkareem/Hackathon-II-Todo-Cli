@@ -14,7 +14,19 @@
       "Bash(git branch:*)",
       "Bash(git remote add:*)",
       "Bash(git push:*)",
-      "Bash(tree:*)"
+      "Bash(tree:*)",
+      "Bash(.specify/scripts/bash/create-phr.sh:*)",
+      "Bash(\"D:/Projects/spec-driven-development-hacathon/Hackathon II - Todo Spec-Driven Development/.specify/scripts/bash/create-phr.sh\" --title \"Generate implementation tasks for Frontend UI\" --stage tasks --feature frontend-ui --json)",
+      "Bash(\"D:/Projects/spec-driven-development-hacathon/Hackathon II - Todo Spec-Driven Development/.specify/scripts/bash/check-prerequisites.sh\" --json --require-tasks --include-tasks)",
+      "Bash(npx create-next-app@latest \"phase-02-fullstack-web/frontend\" --typescript --tailwind --eslint --app --src-dir false --import-alias \"@/*\" --use-npm --yes)",
+      "Bash(npm install:*)",
+      "Bash(mkdir -p \"phase-02-fullstack-web/frontend/types\" \"phase-02-fullstack-web/frontend/hooks\" \"phase-02-fullstack-web/frontend/components/todo\" \"phase-02-fullstack-web/frontend/components/ui\" \"phase-02-fullstack-web/frontend/lib\")",
+      "Skill(sp.phr)",
+      "Bash(\"D:/Projects/spec-driven-development-hacathon/Hackathon II - Todo Spec-Driven Development/.specify/scripts/bash/create-phr.sh\" --title \"Implement Core Frontend UI for Task Management\" --stage green --feature frontend-ui --json)",
+      "Bash(\"D:/Projects/spec-driven-development-hacathon/Hackathon II - Todo Spec-Driven Development/.specify/scripts/bash/create-phr.sh\" --title \"Implement Core Frontend UI for Task Management\" --stage green --feature 001-frontend-ui --json)",
+      "Bash(npm run dev:*)",
+      "Bash(tasklist:*)",
+      "Bash(npx cross-port-killer:*)"
     ]
   }
 }
