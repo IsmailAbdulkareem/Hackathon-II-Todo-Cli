@@ -66,7 +66,11 @@ export default function Home() {
           </div>
           <TodoForm
             onSubmit={handleFormSubmit}
-            initialData={editingTask || undefined}
+            initialData={editingTask ? {
+              title: editingTask.title,
+              description: editingTask.description || undefined,
+              priority: editingTask.priority
+            } : undefined}
             key={editingTask ? `edit-${editingTask.id}` : 'add-new'}
           />
         </section>

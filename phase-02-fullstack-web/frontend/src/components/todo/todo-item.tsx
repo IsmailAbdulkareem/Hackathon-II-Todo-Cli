@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Trash2, Edit2, Clock } from 'lucide-react';
 
 interface TodoItemProps {
-  task: task;
+  task: Task;
   onToggle: (id: string) => void;
   onDelete: (id: string) => void;
   onEdit: (task: Task) => void;
