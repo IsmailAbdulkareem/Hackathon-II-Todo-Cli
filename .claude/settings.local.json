@@ -28,7 +28,12 @@
       "Bash(tasklist:*)",
       "Bash(npx cross-port-killer:*)",
       "Bash(git checkout:*)",
-      "Bash(git merge:*)"
+      "Bash(git merge:*)",
+      "mcp__vercel__list_teams",
+      "mcp__vercel__list_projects",
+      "mcp__vercel__list_deployments",
+      "mcp__vercel__get_deployment_build_logs",
+      "Bash(npm run build:*)"
     ]
   }
 }
