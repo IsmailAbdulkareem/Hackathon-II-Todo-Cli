@@ -1,5 +1,0 @@
-{
-  "buildCommand": "cd phase-02-fullstack-web/frontend && npm run build",
-  "outputDirectory": "phase-02-fullstack-web/frontend/.next",
-  "installCommand": "cd phase-02-fullstack-web/frontend && npm install"
-}
