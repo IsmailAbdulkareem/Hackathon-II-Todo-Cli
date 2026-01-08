@@ -33,7 +33,14 @@
       "mcp__vercel__list_projects",
       "mcp__vercel__list_deployments",
       "mcp__vercel__get_deployment_build_logs",
-      "Bash(npm run build:*)"
+      "Bash(npm run build:*)",
+      "Bash(python:*)",
+      "Bash(pip install:*)",
+      "Bash(timeout:*)",
+      "Bash(cat:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill:*)"
     ]
   }
 }
