@@ -95,3 +95,4 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+phase-02-fullstack-web/backend/todo.db
