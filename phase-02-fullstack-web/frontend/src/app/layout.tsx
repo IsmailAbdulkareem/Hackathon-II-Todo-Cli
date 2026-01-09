@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { ThemeProvider } from "@/components/theme-provider";
+import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
   title: "Task Manager - Spec-Driven Development",
-  description: "Phase II: Frontend Task Management UI",
+  description: "Phase II: Frontend Task Management UI with Modern Animations",
 };
 
 export default function RootLayout({
@@ -12,9 +14,22 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <body className="antialiased font-sans">
-        {children}
+        <ThemeProvider
+          attribute="class"
+          defaultTheme="system"
+          enableSystem
+          disableTransitionOnChange
+        >
+          {children}
+          <Toaster
+            position="top-right"
+            richColors
+            closeButton
+            duration={3000}
+          />
+        </ThemeProvider>
       </body>
     </html>
   );
