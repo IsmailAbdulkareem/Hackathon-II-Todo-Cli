@@ -72,6 +72,7 @@ async def sign_up(
         hashed_password = hash_password(user_data.password)
         user = User(
             email=user_data.email,
+            name=user_data.name,
             hashed_password=hashed_password
         )
 
@@ -85,7 +86,8 @@ async def sign_up(
         return Token(
             access_token=access_token,
             token_type="bearer",
-            user_id=str(user.id)
+            user_id=str(user.id),
+            user_name=user.name
         )
 
     except HTTPException:
@@ -141,7 +143,8 @@ async def sign_in(
         return Token(
             access_token=access_token,
             token_type="bearer",
-            user_id=str(user.id)
+            user_id=str(user.id),
+            user_name=user.name
         )
 
     except HTTPException:

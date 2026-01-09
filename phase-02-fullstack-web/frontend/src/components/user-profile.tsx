@@ -22,10 +22,19 @@ export function UserProfile({ isAuthenticated, onLogout }: UserProfileProps) {
     return null
   }
 
-  // Get user email from localStorage or use default
-  const userEmail = authService.getUserId() || "user@example.com"
-  const userName = userEmail.split("@")[0]
-  const initials = userName.slice(0, 2).toUpperCase()
+  const userName = authService.getUserName() || "User"
+  const userEmail = authService.getUserEmail() || "user@example.com"
+
+  // Get initials from the user's name
+  const getInitials = (name: string) => {
+    const parts = name.trim().split(' ')
+    if (parts.length >= 2) {
+      return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase()
+    }
+    return name.slice(0, 2).toUpperCase()
+  }
+
+  const initials = getInitials(userName)
 
   return (
     <div className="flex items-center gap-3 px-4 py-2 bg-white dark:bg-neutral-900 rounded-lg border border-neutral-200 dark:border-neutral-800 shadow-sm transition-all duration-300 hover:shadow-md">

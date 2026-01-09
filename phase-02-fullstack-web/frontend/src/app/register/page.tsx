@@ -8,6 +8,7 @@ import Link from "next/link"
 import { toast } from "sonner"
 
 export default function RegisterPage() {
+  const [name, setName] = useState("")
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [loading, setLoading] = useState(false)
@@ -18,7 +19,7 @@ export default function RegisterPage() {
     setLoading(true)
 
     try {
-      await authService.signUp({ email, password })
+      await authService.signUp({ name, email, password })
       toast.success("Account created successfully!", {
         description: "Welcome aboard! Let's get started.",
       })
@@ -70,6 +71,22 @@ export default function RegisterPage() {
 
           {/* Form Fields */}
           <div className="space-y-4">
+            <div>
+              <label htmlFor="name" className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-2">
+                Full Name
+              </label>
+              <input
+                id="name"
+                type="text"
+                placeholder="John Doe"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                className="w-full px-4 py-3 border-2 border-neutral-300 dark:border-neutral-700 bg-white dark:bg-neutral-800 text-neutral-900 dark:text-neutral-100 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-300 placeholder:text-neutral-400 dark:placeholder:text-neutral-500"
+                required
+                disabled={loading}
+              />
+            </div>
+
             <div>
               <label htmlFor="email" className="block text-sm font-semibold text-neutral-700 dark:text-neutral-300 mb-2">
                 Email Address
