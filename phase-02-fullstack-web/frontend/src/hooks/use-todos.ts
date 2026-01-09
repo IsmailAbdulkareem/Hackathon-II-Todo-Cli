@@ -1,87 +1,97 @@
 import { useState, useCallback, useEffect } from 'react';
 import { Task, TaskCreate, TaskUpdate, TodoStatus } from '../types/todo';
+import { apiService } from '@/lib/api-service';
+import { Task as ApiTask } from '@/lib/api-config';
 
-const STORAGE_KEY = 'todo_app_tasks';
+// Adapter: Convert backend API task to frontend Task type
+function apiTaskToFrontendTask(apiTask: ApiTask): Task {
+  return {
+    id: apiTask.id,
+    title: apiTask.title,
+    description: apiTask.description,
+    status: apiTask.completed ? 'completed' : 'pending',
+    priority: 1, // Backend doesn't have priority yet (Phase 2)
+    completed: apiTask.completed,
+    createdAt: apiTask.created_at,
+    updatedAt: apiTask.updated_at,
+  };
+}
 
 export function useTodos() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [isInitialized, setIsInitialized] = useState(false);
 
-  // Load from localStorage
+  // Load from backend API
   useEffect(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (saved) {
+    const loadTasks = async () => {
       try {
-        setTasks(JSON.parse(saved));
-      } catch (e) {
-        console.error('Failed to parse saved tasks', e);
+        const apiTasks = await apiService.getTasks();
+        const frontendTasks = apiTasks.map(apiTaskToFrontendTask);
+        setTasks(frontendTasks);
+      } catch (error) {
+        console.error('Failed to load tasks from API:', error);
+        // Fallback to empty array on error
+        setTasks([]);
+      } finally {
+        setIsInitialized(true);
       }
-    }
-    setIsInitialized(true);
-  }, []);
-
-  // Save to localStorage
-  useEffect(() => {
-    if (isInitialized) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
-    }
-  }, [tasks, isInitialized]);
-
-  const addTask = useCallback((data: TaskCreate) => {
-    const newTask: Task = {
-      id: crypto.randomUUID(),
-      title: data.title,
-      description: data.description || null,
-      status: 'pending',
-      priority: data.priority || 1,
-      completed: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: null,
     };
-    setTasks((prev) => [newTask, ...prev]);
-    return newTask;
+
+    loadTasks();
   }, []);
 
-  const updateTask = useCallback((id: string, updates: TaskUpdate) => {
-    setTasks((prev) =>
-      prev.map((task) => {
-        if (task.id === id) {
-          const status = updates.completed !== undefined
-            ? (updates.completed ? 'completed' : 'pending')
-            : (updates.status || task.status);
-
-          return {
-            ...task,
-            ...updates,
-            status: status as TodoStatus,
-            completed: status === 'completed',
-            updatedAt: new Date().toISOString(),
-          };
-        }
-        return task;
-      })
-    );
+  const addTask = useCallback(async (data: TaskCreate) => {
+    try {
+      const apiTask = await apiService.createTask({
+        title: data.title,
+        description: data.description || null,
+      });
+      const newTask = apiTaskToFrontendTask(apiTask);
+      setTasks((prev) => [newTask, ...prev]);
+      return newTask;
+    } catch (error) {
+      console.error('Failed to create task:', error);
+      throw error;
+    }
   }, []);
 
-  const deleteTask = useCallback((id: string) => {
-    setTasks((prev) => prev.filter((task) => task.id !== id));
+  const updateTask = useCallback(async (id: string, updates: TaskUpdate) => {
+    try {
+      const apiTask = await apiService.updateTask(id, {
+        title: updates.title || '',
+        description: updates.description || null,
+      });
+      const updatedTask = apiTaskToFrontendTask(apiTask);
+      setTasks((prev) =>
+        prev.map((task) => (task.id === id ? updatedTask : task))
+      );
+    } catch (error) {
+      console.error('Failed to update task:', error);
+      throw error;
+    }
   }, []);
 
-  const toggleTask = useCallback((id: string) => {
-    setTasks((prev) =>
-      prev.map((task) => {
-        if (task.id === id) {
-          const completed = !task.completed;
-          return {
-            ...task,
-            completed,
-            status: completed ? 'completed' : 'pending',
-            updatedAt: new Date().toISOString(),
-          };
-        }
-        return task;
-      })
-    );
+  const deleteTask = useCallback(async (id: string) => {
+    try {
+      await apiService.deleteTask(id);
+      setTasks((prev) => prev.filter((task) => task.id !== id));
+    } catch (error) {
+      console.error('Failed to delete task:', error);
+      throw error;
+    }
+  }, []);
+
+  const toggleTask = useCallback(async (id: string) => {
+    try {
+      const apiTask = await apiService.toggleTaskCompletion(id);
+      const updatedTask = apiTaskToFrontendTask(apiTask);
+      setTasks((prev) =>
+        prev.map((task) => (task.id === id ? updatedTask : task))
+      );
+    } catch (error) {
+      console.error('Failed to toggle task:', error);
+      throw error;
+    }
   }, []);
 
   return {
