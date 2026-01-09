@@ -8,6 +8,7 @@ from fastapi.responses import JSONResponse
 from sqlmodel import SQLModel
 
 from src.api.tasks import router as tasks_router
+from src.api.auth import router as auth_router
 from src.core.config import settings
 from src.core.database import engine
 
@@ -100,6 +101,7 @@ async def global_exception_handler(request: Request, exc: Exception):
 
 
 # Register API routers
+app.include_router(auth_router)
 app.include_router(tasks_router)
 
 

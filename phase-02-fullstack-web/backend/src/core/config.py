@@ -10,6 +10,9 @@ class Settings(BaseSettings):
     # CORS configuration
     CORS_ORIGINS: str = "http://localhost:3000"
 
+    # JWT Authentication configuration
+    BETTER_AUTH_SECRET: str
+
     model_config = SettingsConfigDict(
         env_file=".env",
         env_file_encoding="utf-8",

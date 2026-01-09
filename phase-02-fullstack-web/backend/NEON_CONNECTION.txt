@@ -1,0 +1,16 @@
+# Neon Database Connection String
+# KEEP THIS FILE PRIVATE - DO NOT COMMIT TO GIT
+
+# Your Neon PostgreSQL connection string:
+# Replace this with your actual connection string from Neon
+DATABASE_URL=postgresql://username:password@ep-xxx.region.aws.neon.tech/neondb?sslmode=require
+
+# Instructions:
+# 1. Copy your connection string from Neon Console
+# 2. Replace the DATABASE_URL value above with your actual connection string
+# 3. Make sure it includes ?sslmode=require at the end
+# 4. Save this file
+# 5. You'll use this when deploying to Hugging Face
+
+# Example of what it should look like:
+# DATABASE_URL=postgresql://myuser:mypassword123@ep-cool-cloud-123456.us-east-2.aws.neon.tech/neondb?sslmode=require
