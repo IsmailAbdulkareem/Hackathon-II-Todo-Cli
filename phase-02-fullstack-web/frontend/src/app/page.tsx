@@ -69,9 +69,14 @@ export default function Home() {
 
   const handleToggle = async (id: string) => {
     try {
-      await toggleTask(id);
+      // Get the task BEFORE toggling to show correct message
       const task = tasks.find(t => t.id === id);
-      if (task?.completed) {
+      const wasCompleted = task?.completed || false;
+
+      await toggleTask(id);
+
+      // Show message based on the OLD state (before toggle)
+      if (!wasCompleted) {
         toast.success('Task completed! 🎉', {
           description: 'Great job on finishing this task!',
         });
@@ -105,29 +110,29 @@ export default function Home() {
       <div className="max-w-5xl mx-auto p-4 md:p-8 space-y-6">
         {/* Header Section */}
         <header className="space-y-4 animate-in fade-in slide-in-from-top duration-700">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
               <div className="p-3 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl shadow-lg shadow-blue-500/50 dark:shadow-blue-500/30 transform hover:scale-110 transition-transform duration-300">
                 <Layout className="w-7 h-7 text-white" />
               </div>
               <div>
-                <h1 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
                   Task Manager
                 </h1>
-                <p className="text-sm text-neutral-600 dark:text-neutral-400">
+                <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400">
                   Organize your life, one task at a time
                 </p>
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-end">
               <ThemeToggle />
               {isAuthenticated ? (
                 <UserProfile isAuthenticated={isAuthenticated} onLogout={handleLogout} />
               ) : (
                 <Link
                   href="/login"
-                  className="px-4 py-2 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium rounded-lg shadow-lg shadow-blue-500/50 dark:shadow-blue-500/30 transition-all duration-300 transform hover:scale-105 cursor-pointer"
+                  className="px-3 sm:px-4 py-2 text-sm bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium rounded-lg shadow-lg shadow-blue-500/50 dark:shadow-blue-500/30 transition-all duration-300 transform hover:scale-105 cursor-pointer whitespace-nowrap"
                 >
                   Login
                 </Link>
