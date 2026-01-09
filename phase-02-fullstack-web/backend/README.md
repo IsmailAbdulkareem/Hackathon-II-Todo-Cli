@@ -15,7 +15,9 @@ FastAPI backend for Todo application with PostgreSQL persistence.
 
 - 6 REST endpoints for full CRUD operations
 - PostgreSQL database persistence
-- User isolation via user_id path parameters
+- **JWT Authentication**: Stateless token-based authentication
+- **User Isolation**: Users can only access their own resources
+- **Two-Stage Security**: 401 for authentication, 403 for authorization
 - Automatic OpenAPI documentation
 - CORS support for frontend integration
 - Request logging and error handling

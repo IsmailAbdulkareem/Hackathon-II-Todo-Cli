@@ -109,12 +109,18 @@ phase-02-fullstack-web/
 ```bash
 DATABASE_URL=postgresql://user:pass@host/db
 CORS_ORIGINS=http://localhost:3000
+BETTER_AUTH_SECRET=your-jwt-secret-here
 ```
 
 ### Frontend (.env.local)
 ```bash
 NEXT_PUBLIC_API_URL=http://localhost:8000
+BETTER_AUTH_SECRET=your-jwt-secret-here
+BETTER_AUTH_URL=http://localhost:3000
+BETTER_AUTH_DATABASE_URL=postgresql://user:pass@host/auth_db
 ```
+
+**See [AUTHENTICATION.md](./AUTHENTICATION.md) for complete JWT authentication setup guide.**
 
 ## Architecture Decisions
 

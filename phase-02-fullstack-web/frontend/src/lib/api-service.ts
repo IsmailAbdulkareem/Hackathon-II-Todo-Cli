@@ -1,12 +1,25 @@
 import { API_CONFIG, Task, CreateTaskRequest, UpdateTaskRequest, ApiError } from './api-config';
+import { authService } from './auth-service';
 
 class ApiService {
   private baseUrl: string;
-  private userId: string;
 
   constructor() {
     this.baseUrl = API_CONFIG.BASE_URL;
-    this.userId = API_CONFIG.DEFAULT_USER_ID;
+  }
+
+  // Get authentication headers with JWT token
+  private getAuthHeaders(): HeadersInit {
+    const token = authService.getToken();
+
+    if (!token) {
+      throw new Error("Not authenticated");
+    }
+
+    return {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${token}`
+    };
   }
 
   // Helper method for API calls
@@ -17,13 +30,28 @@ class ApiService {
     const url = `${this.baseUrl}${endpoint}`;
 
     try {
+      // Get auth headers for all requests
+      const authHeaders = this.getAuthHeaders();
+
       const response = await fetch(url, {
         ...options,
         headers: {
-          'Content-Type': 'application/json',
+          ...authHeaders,
           ...options?.headers,
         },
       });
+
+      // Handle 401 Unauthorized - token expired or invalid
+      if (response.status === 401) {
+        authService.signOut();
+        window.location.href = "/login";
+        throw new Error("Session expired. Please log in again.");
+      }
+
+      // Handle 403 Forbidden - access denied
+      if (response.status === 403) {
+        throw new Error("Access denied: You can only access your own resources");
+      }
 
       // Handle 204 No Content (DELETE success)
       if (response.status === 204) {
@@ -46,17 +74,20 @@ class ApiService {
 
   // Get all tasks
   async getTasks(): Promise<Task[]> {
-    return this.request<Task[]>(API_CONFIG.ENDPOINTS.TASKS(this.userId));
+    const userId = authService.getUserId() || 'unknown';
+    return this.request<Task[]>(API_CONFIG.ENDPOINTS.TASKS(userId));
   }
 
   // Get a single task
   async getTask(taskId: string): Promise<Task> {
-    return this.request<Task>(API_CONFIG.ENDPOINTS.TASK(this.userId, taskId));
+    const userId = authService.getUserId() || 'unknown';
+    return this.request<Task>(API_CONFIG.ENDPOINTS.TASK(userId, taskId));
   }
 
   // Create a new task
   async createTask(data: CreateTaskRequest): Promise<Task> {
-    return this.request<Task>(API_CONFIG.ENDPOINTS.TASKS(this.userId), {
+    const userId = authService.getUserId() || 'unknown';
+    return this.request<Task>(API_CONFIG.ENDPOINTS.TASKS(userId), {
       method: 'POST',
       body: JSON.stringify(data),
     });
@@ -64,7 +95,8 @@ class ApiService {
 
   // Update a task
   async updateTask(taskId: string, data: UpdateTaskRequest): Promise<Task> {
-    return this.request<Task>(API_CONFIG.ENDPOINTS.TASK(this.userId, taskId), {
+    const userId = authService.getUserId() || 'unknown';
+    return this.request<Task>(API_CONFIG.ENDPOINTS.TASK(userId, taskId), {
       method: 'PUT',
       body: JSON.stringify(data),
     });
@@ -72,14 +104,16 @@ class ApiService {
 
   // Delete a task
   async deleteTask(taskId: string): Promise<void> {
-    return this.request<void>(API_CONFIG.ENDPOINTS.TASK(this.userId, taskId), {
+    const userId = authService.getUserId() || 'unknown';
+    return this.request<void>(API_CONFIG.ENDPOINTS.TASK(userId, taskId), {
       method: 'DELETE',
     });
   }
 
   // Toggle task completion
   async toggleTaskCompletion(taskId: string): Promise<Task> {
-    return this.request<Task>(API_CONFIG.ENDPOINTS.TOGGLE_COMPLETE(this.userId, taskId), {
+    const userId = authService.getUserId() || 'unknown';
+    return this.request<Task>(API_CONFIG.ENDPOINTS.TOGGLE_COMPLETE(userId, taskId), {
       method: 'PATCH',
     });
   }

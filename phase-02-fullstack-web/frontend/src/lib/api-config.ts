@@ -6,7 +6,7 @@ export const API_CONFIG = {
     TASK: (userId: string, taskId: string) => `/api/${userId}/tasks/${taskId}`,
     TOGGLE_COMPLETE: (userId: string, taskId: string) => `/api/${userId}/tasks/${taskId}/complete`,
   },
-  DEFAULT_USER_ID: 'user123', // For Phase 2 (no auth yet)
+  DEFAULT_USER_ID: 'user123', // Fallback user ID (JWT authentication extracts actual user_id from token)
 };
 
 // API Response Types
