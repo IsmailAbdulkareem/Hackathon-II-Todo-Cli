@@ -20,7 +20,7 @@ https://huggingface.co/spaces/ismail233290/TODO_APP
 
 **Secret 2:**
 - Name: `CORS_ORIGINS`
-- Value: `http://localhost:3000,https://ismail233290-todo-app.hf.space`
+- Value: `http://localhost:3000,https://ismail233290-todo-app.hf.space,https://hackathon-ii-todo-cli.vercel.app`
 
 ### Step 2: Reboot Space
 

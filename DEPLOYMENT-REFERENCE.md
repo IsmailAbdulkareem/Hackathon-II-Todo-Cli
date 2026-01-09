@@ -16,7 +16,7 @@ postgresql://neondb_owner:npg_No4mB3EezhxH@ep-still-rain-ahk6e0c4-pooler.c-3.us-
 
 ### Secret 2: CORS_ORIGINS
 ```
-http://localhost:3000,https://ismail233290-todo-app.hf.space
+http://localhost:3000,https://ismail233290-todo-app.hf.space,https://hackathon-ii-todo-cli.vercel.app
 ```
 
 ## 🧪 Test Commands (After Deployment)
