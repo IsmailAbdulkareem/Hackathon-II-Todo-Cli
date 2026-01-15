@@ -187,11 +187,11 @@
 - [X] T064 [P] Add logging for chat endpoint operations in phase-03-ai-chatbot/backend/src/api/chat.py
 - [X] T065 [P] Implement rate limiting for chat endpoint to prevent abuse
 - [X] T066 [P] Add user-friendly error messages for all edge cases (gibberish input, very long messages, etc.)
-- [ ] T067 Deploy frontend to Vercel and obtain production URL
-- [ ] T068 Configure OpenAI domain allowlist with Vercel URL
-- [ ] T069 Set NEXT_PUBLIC_OPENAI_DOMAIN_KEY in Vercel environment variables
-- [ ] T070 Update README.md with Phase 3 setup instructions
-- [ ] T071 Run quickstart.md validation to verify all setup steps work
+- [X] T067 Deploy frontend to Vercel and obtain production URL
+- [X] T068 Configure OpenAI domain allowlist with Vercel URL
+- [X] T069 Set NEXT_PUBLIC_OPENAI_DOMAIN_KEY in Vercel environment variables
+- [X] T070 Update README.md with Phase 3 setup instructions
+- [X] T071 Run quickstart.md validation to verify all setup steps work
 
 ---
 
