@@ -73,7 +73,7 @@ export function ChatInterface() {
       }
 
       // Get JWT token
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("auth_token");
       if (!token) {
         throw new Error("Authentication token not found");
       }
