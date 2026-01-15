@@ -41,7 +41,7 @@
 
 - [X] T006 Create database migration script for Conversation table in phase-03-ai-chatbot/backend/migrations/add_conversations.sql
 - [X] T007 Create database migration script for Message table in phase-03-ai-chatbot/backend/migrations/add_messages.sql
-- [ ] T008 Run database migrations to create conversations and messages tables
+- [X] T008 Run database migrations to create conversations and messages tables
 - [X] T009 [P] Create Conversation model in phase-03-ai-chatbot/backend/src/models/conversation.py
 - [X] T010 [P] Create Message model in phase-03-ai-chatbot/backend/src/models/message.py
 - [X] T011 Update backend config.py to include OpenAI configuration (API key, model) in phase-03-ai-chatbot/backend/src/core/config.py
@@ -95,10 +95,10 @@
 
 ### Implementation for User Story 2
 
-- [ ] T036 [US2] Enhance list_tasks MCP tool to support status filtering (all, pending, completed) in phase-03-ai-chatbot/backend/src/services/mcp_server.py
-- [ ] T037 [US2] Add natural language interpretation for task listing commands in OpenAI agent instructions (phase-03-ai-chatbot/backend/src/services/chat_service.py)
-- [ ] T038 [US2] Format task list responses for user-friendly display in chat (phase-03-ai-chatbot/backend/src/services/chat_service.py)
-- [ ] T039 [US2] Handle empty task list scenario with friendly message
+- [X] T036 [US2] Enhance list_tasks MCP tool to support status filtering (all, pending, completed) in phase-03-ai-chatbot/backend/src/services/mcp_server.py
+- [X] T037 [US2] Add natural language interpretation for task listing commands in OpenAI agent instructions (phase-03-ai-chatbot/backend/src/services/chat_service.py)
+- [X] T038 [US2] Format task list responses for user-friendly display in chat (phase-03-ai-chatbot/backend/src/services/chat_service.py)
+- [X] T039 [US2] Handle empty task list scenario with friendly message
 
 **Checkpoint**: At this point, User Stories 1 AND 2 should both work independently - users can create and view tasks
 
@@ -112,11 +112,11 @@
 
 ### Implementation for User Story 3
 
-- [ ] T040 [US3] Enhance complete_task MCP tool to toggle completion status in phase-03-ai-chatbot/backend/src/services/mcp_server.py
-- [ ] T041 [US3] Add natural language interpretation for task completion commands (phase-03-ai-chatbot/backend/src/services/chat_service.py)
+- [X] T040 [US3] Enhance complete_task MCP tool to toggle completion status in phase-03-ai-chatbot/backend/src/services/mcp_server.py
+- [X] T041 [US3] Add natural language interpretation for task completion commands (phase-03-ai-chatbot/backend/src/services/chat_service.py)
 - [ ] T042 [US3] Add fuzzy matching for task titles (e.g., "I finished buying groceries" → find "Buy groceries" task)
-- [ ] T043 [US3] Implement ambiguous command resolution (numbered list when multiple matches) per FR-007
-- [ ] T044 [US3] Add confirmation messages for task completion
+- [X] T043 [US3] Implement ambiguous command resolution (numbered list when multiple matches) per FR-007
+- [X] T044 [US3] Add confirmation messages for task completion
 
 **Checkpoint**: At this point, User Stories 1, 2, AND 3 should all work independently
 
@@ -130,15 +130,15 @@
 
 ### Implementation for User Story 4
 
-- [ ] T045 [P] [US4] Create GET /api/{user_id}/conversations endpoint in phase-03-ai-chatbot/backend/src/api/chat.py
-- [ ] T046 [P] [US4] Create GET /api/{user_id}/conversations/{conversation_id}/messages endpoint in phase-03-ai-chatbot/backend/src/api/chat.py
-- [ ] T047 [US4] Implement conversation list retrieval with pagination (limit, offset) in ChatService
-- [ ] T048 [US4] Implement message history loading with pagination (limit, before timestamp) in ChatService
-- [ ] T049 [P] [US4] Create ConversationList component in phase-03-ai-chatbot/frontend/src/components/chat/conversation-list.tsx
-- [ ] T050 [P] [US4] Create MessageList component with pagination in phase-03-ai-chatbot/frontend/src/components/chat/message-list.tsx
-- [ ] T051 [US4] Add conversation switching functionality in ChatInterface component
-- [ ] T052 [US4] Persist active conversation_id in frontend state (localStorage or session)
-- [ ] T053 [US4] Load conversation history on chat page mount
+- [X] T045 [P] [US4] Create GET /api/{user_id}/conversations endpoint in phase-03-ai-chatbot/backend/src/api/chat.py
+- [X] T046 [P] [US4] Create GET /api/{user_id}/conversations/{conversation_id}/messages endpoint in phase-03-ai-chatbot/backend/src/api/chat.py
+- [X] T047 [US4] Implement conversation list retrieval with pagination (limit, offset) in ChatService
+- [X] T048 [US4] Implement message history loading with pagination (limit, before timestamp) in ChatService
+- [X] T049 [P] [US4] Create ConversationList component in phase-03-ai-chatbot/frontend/src/components/chat/conversation-list.tsx
+- [X] T050 [P] [US4] Create MessageList component with pagination in phase-03-ai-chatbot/frontend/src/components/chat/message-list.tsx
+- [X] T051 [US4] Add conversation switching functionality in ChatInterface component
+- [X] T052 [US4] Persist active conversation_id in frontend state (localStorage or session)
+- [X] T053 [US4] Load conversation history on chat page mount
 
 **Checkpoint**: At this point, all P1 and P2 user stories should work independently
 
@@ -152,10 +152,10 @@
 
 ### Implementation for User Story 5
 
-- [ ] T054 [US5] Enhance update_task MCP tool to support title and description updates in phase-03-ai-chatbot/backend/src/services/mcp_server.py
-- [ ] T055 [US5] Add natural language interpretation for task update commands (phase-03-ai-chatbot/backend/src/services/chat_service.py)
-- [ ] T056 [US5] Add character limit validation (200 for title, 2000 for description) in update_task tool
-- [ ] T057 [US5] Add confirmation messages for task updates
+- [X] T054 [US5] Enhance update_task MCP tool to support title and description updates in phase-03-ai-chatbot/backend/src/services/mcp_server.py
+- [X] T055 [US5] Add natural language interpretation for task update commands (phase-03-ai-chatbot/backend/src/services/chat_service.py)
+- [X] T056 [US5] Add character limit validation (200 for title, 2000 for description) in update_task tool
+- [X] T057 [US5] Add confirmation messages for task updates
 
 **Checkpoint**: User Story 5 complete and independently testable
 
@@ -169,10 +169,10 @@
 
 ### Implementation for User Story 6
 
-- [ ] T058 [US6] Enhance delete_task MCP tool with proper authorization checks in phase-03-ai-chatbot/backend/src/services/mcp_server.py
-- [ ] T059 [US6] Add natural language interpretation for task deletion commands (phase-03-ai-chatbot/backend/src/services/chat_service.py)
-- [ ] T060 [US6] Add confirmation messages for task deletion
-- [ ] T061 [US6] Handle task not found errors gracefully
+- [X] T058 [US6] Enhance delete_task MCP tool with proper authorization checks in phase-03-ai-chatbot/backend/src/services/mcp_server.py
+- [X] T059 [US6] Add natural language interpretation for task deletion commands (phase-03-ai-chatbot/backend/src/services/chat_service.py)
+- [X] T060 [US6] Add confirmation messages for task deletion
+- [X] T061 [US6] Handle task not found errors gracefully
 
 **Checkpoint**: All user stories (P1, P2, P3) should now be independently functional
 
@@ -182,11 +182,11 @@
 
 **Purpose**: Improvements that affect multiple user stories
 
-- [ ] T062 [P] Add comprehensive error handling for database connection failures across all endpoints
-- [ ] T063 [P] Add logging for all MCP tool invocations in phase-03-ai-chatbot/backend/src/services/mcp_server.py
-- [ ] T064 [P] Add logging for chat endpoint operations in phase-03-ai-chatbot/backend/src/api/chat.py
-- [ ] T065 [P] Implement rate limiting for chat endpoint to prevent abuse
-- [ ] T066 [P] Add user-friendly error messages for all edge cases (gibberish input, very long messages, etc.)
+- [X] T062 [P] Add comprehensive error handling for database connection failures across all endpoints
+- [X] T063 [P] Add logging for all MCP tool invocations in phase-03-ai-chatbot/backend/src/services/mcp_server.py
+- [X] T064 [P] Add logging for chat endpoint operations in phase-03-ai-chatbot/backend/src/api/chat.py
+- [X] T065 [P] Implement rate limiting for chat endpoint to prevent abuse
+- [X] T066 [P] Add user-friendly error messages for all edge cases (gibberish input, very long messages, etc.)
 - [ ] T067 Deploy frontend to Vercel and obtain production URL
 - [ ] T068 Configure OpenAI domain allowlist with Vercel URL
 - [ ] T069 Set NEXT_PUBLIC_OPENAI_DOMAIN_KEY in Vercel environment variables
