@@ -158,6 +158,7 @@ class ChatService:
                     "When users mark tasks complete, use the complete_task tool. "
                     "When users want to update tasks, use the update_task tool. "
                     "When users want to delete tasks, use the delete_task tool. "
+                    "When users mention task titles in natural language (e.g., 'I finished buying groceries'), use find_task_by_title to search for matching tasks first. "
                     "Always confirm actions with friendly messages. "
                     "If a command is ambiguous and matches multiple tasks, present a numbered list and ask the user to select."
                 )
@@ -272,6 +273,23 @@ class ChatService:
                                 }
                             },
                             "required": ["task_id"]
+                        }
+                    }
+                },
+                {
+                    "type": "function",
+                    "function": {
+                        "name": "find_task_by_title",
+                        "description": "Search for tasks by partial title match (case-insensitive). Use this when users mention task titles in natural language.",
+                        "parameters": {
+                            "type": "object",
+                            "properties": {
+                                "search_query": {
+                                    "type": "string",
+                                    "description": "Partial title to search for (e.g., 'groceries', 'buy', etc.)"
+                                }
+                            },
+                            "required": ["search_query"]
                         }
                     }
                 }

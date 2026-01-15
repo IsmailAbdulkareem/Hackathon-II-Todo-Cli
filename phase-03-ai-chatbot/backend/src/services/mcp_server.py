@@ -27,6 +27,7 @@ class MCPServer:
             "complete_task": self.complete_task,
             "delete_task": self.delete_task,
             "update_task": self.update_task,
+            "find_task_by_title": self.find_task_by_title,
         }
 
     async def add_task(
@@ -323,6 +324,63 @@ class MCPServer:
         except Exception as e:
             logger.error(f"MCP Tool: update_task error for user_id={user_id}, task_id={task_id}: {str(e)}")
             return {"status": "error", "error": f"Failed to update task: {str(e)}"}
+
+    async def find_task_by_title(
+        self,
+        user_id: str,
+        search_query: str
+    ) -> dict[str, Any]:
+        """
+        Find tasks by partial title match (fuzzy search).
+
+        Args:
+            user_id: User identifier (UUID format)
+            search_query: Partial title to search for (case-insensitive)
+
+        Returns:
+            dict: {tasks: list, count: int} or {error: str}
+        """
+        logger.info(f"MCP Tool: find_task_by_title called for user_id={user_id}, search_query='{search_query}'")
+        try:
+            if not search_query or not search_query.strip():
+                logger.warning(f"MCP Tool: find_task_by_title failed - empty search query for user_id={user_id}")
+                return {"error": "Search query cannot be empty"}
+
+            session = next(get_session())
+            try:
+                # Search for tasks with partial title match (case-insensitive)
+                search_pattern = f"%{search_query.strip()}%"
+                statement = select(Task).where(
+                    Task.user_id == user_id,
+                    Task.title.ilike(search_pattern)
+                )
+                tasks = session.exec(statement).all()
+
+                # Format tasks for AI agent
+                task_list = [
+                    {
+                        "id": str(task.id),
+                        "title": task.title,
+                        "description": task.description,
+                        "completed": task.completed,
+                        "created_at": task.created_at.isoformat(),
+                        "updated_at": task.updated_at.isoformat()
+                    }
+                    for task in tasks
+                ]
+
+                logger.info(f"MCP Tool: find_task_by_title success - found {len(task_list)} tasks for user_id={user_id}")
+                return {
+                    "tasks": task_list,
+                    "count": len(task_list),
+                    "search_query": search_query.strip()
+                }
+            finally:
+                session.close()
+
+        except Exception as e:
+            logger.error(f"MCP Tool: find_task_by_title error for user_id={user_id}: {str(e)}")
+            return {"error": f"Failed to search tasks: {str(e)}"}
 
     def get_tools(self) -> dict[str, Any]:
         """

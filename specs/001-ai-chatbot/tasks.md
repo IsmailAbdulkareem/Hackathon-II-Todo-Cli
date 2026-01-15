@@ -114,7 +114,7 @@
 
 - [X] T040 [US3] Enhance complete_task MCP tool to toggle completion status in phase-03-ai-chatbot/backend/src/services/mcp_server.py
 - [X] T041 [US3] Add natural language interpretation for task completion commands (phase-03-ai-chatbot/backend/src/services/chat_service.py)
-- [ ] T042 [US3] Add fuzzy matching for task titles (e.g., "I finished buying groceries" → find "Buy groceries" task)
+- [X] T042 [US3] Add fuzzy matching for task titles (e.g., "I finished buying groceries" → find "Buy groceries" task)
 - [X] T043 [US3] Implement ambiguous command resolution (numbered list when multiple matches) per FR-007
 - [X] T044 [US3] Add confirmation messages for task completion
 
