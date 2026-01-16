@@ -134,8 +134,19 @@ async def send_chat_message(
 
         logger.info(f"Chat endpoint: Agent processed message - conversation_id={result['conversation_id']}, tool_calls={len(result['tool_calls'])}")
 
+        # Handle conversation_id conversion
+        conv_id = result["conversation_id"]
+        if conv_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="Failed to create or retrieve conversation"
+            )
+
+        # Convert string to UUID if needed
+        conversation_uuid = UUID(conv_id) if isinstance(conv_id, str) else conv_id
+
         return ChatResponse(
-            conversation_id=UUID(result["conversation_id"]),
+            conversation_id=conversation_uuid,
             response=result["response"],
             tool_calls=result["tool_calls"]
         )
