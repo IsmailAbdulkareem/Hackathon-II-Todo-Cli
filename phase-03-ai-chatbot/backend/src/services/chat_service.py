@@ -158,14 +158,33 @@ class ChatService:
                 "content": (
                     "You are a helpful AI assistant that helps users manage their todo tasks. "
                     "You can create, view, update, complete, and delete tasks through natural language. "
-                    "When users ask to add tasks, use the add_task tool. "
-                    "When users ask to see tasks, use the list_tasks tool. "
-                    "When users mark tasks complete, use the complete_task tool. "
-                    "When users want to update tasks, use the update_task tool. "
-                    "When users want to delete tasks, use the delete_task tool. "
-                    "When users mention task titles in natural language (e.g., 'I finished buying groceries'), use find_task_by_title to search for matching tasks first. "
-                    "Always confirm actions with friendly messages. "
-                    "If a command is ambiguous and matches multiple tasks, present a numbered list and ask the user to select."
+                    "\n\n"
+                    "IMPORTANT INSTRUCTIONS:\n"
+                    "1. When users reference tasks by number (e.g., 'edit task 10', 'delete task 3'), you MUST:\n"
+                    "   - First call list_tasks to get all tasks\n"
+                    "   - Present them as a numbered list (1, 2, 3, etc.)\n"
+                    "   - Use the task_id from the Nth item in the list for the operation\n"
+                    "   - Example: If user says 'edit task 2', list all tasks, then use the task_id of the 2nd task\n"
+                    "\n"
+                    "2. When users want to add descriptions:\n"
+                    "   - For new tasks: include description in add_task\n"
+                    "   - For existing tasks: use update_task with the description parameter\n"
+                    "   - Descriptions can be up to 2000 characters\n"
+                    "\n"
+                    "3. When users mention task titles in natural language (e.g., 'I finished buying groceries'):\n"
+                    "   - Use find_task_by_title to search for matching tasks first\n"
+                    "   - If multiple matches, ask user to clarify\n"
+                    "\n"
+                    "4. Tool usage:\n"
+                    "   - add_task: Create new tasks (with optional description)\n"
+                    "   - list_tasks: View all tasks (use this when users reference by number!)\n"
+                    "   - complete_task: Mark tasks as done\n"
+                    "   - update_task: Modify title or description of existing tasks\n"
+                    "   - delete_task: Remove tasks\n"
+                    "   - find_task_by_title: Search tasks by partial title match\n"
+                    "\n"
+                    "5. Always confirm actions with friendly, detailed messages.\n"
+                    "6. If a command is ambiguous, ask for clarification."
                 )
             })
 
@@ -511,6 +530,49 @@ class ChatService:
             "messages": message_list,
             "total": total
         }
+
+    async def delete_conversation(
+        self,
+        session: Session,
+        user_id: str,
+        conversation_id: UUID
+    ) -> bool:
+        """
+        Delete a conversation and all its messages.
+
+        Args:
+            session: Database session
+            user_id: User identifier
+            conversation_id: Conversation identifier to delete
+
+        Returns:
+            bool: True if deleted successfully
+
+        Raises:
+            ValueError: If conversation not found or doesn't belong to user
+        """
+        # Verify conversation exists and belongs to user
+        statement = select(Conversation).where(
+            Conversation.id == conversation_id,
+            Conversation.user_id == user_id
+        )
+        conversation = session.exec(statement).first()
+
+        if not conversation:
+            raise ValueError("Conversation not found or does not belong to user")
+
+        # Delete all messages in the conversation
+        msg_statement = select(Message).where(Message.conversation_id == conversation_id)
+        messages = session.exec(msg_statement).all()
+        for msg in messages:
+            session.delete(msg)
+
+        # Delete the conversation
+        session.delete(conversation)
+        session.commit()
+
+        logger.info(f"Deleted conversation {conversation_id} for user {user_id}")
+        return True
 
 
 # Global chat service instance

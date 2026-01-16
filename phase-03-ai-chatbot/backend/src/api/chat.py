@@ -338,3 +338,62 @@ async def get_conversation_messages(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Internal server error: {str(e)}"
         )
+
+
+@router.delete("/{user_id}/conversations/{conversation_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_conversation(
+    user_id: str,
+    conversation_id: UUID,
+    jwt_user_id: str = Depends(get_current_user_id),
+    session: Session = Depends(get_session)
+) -> None:
+    """
+    Delete a conversation and all its messages.
+
+    This endpoint:
+    1. Validates user authentication and ownership
+    2. Validates conversation belongs to user
+    3. Deletes all messages in the conversation
+    4. Deletes the conversation
+
+    Args:
+        user_id: User identifier from URL path
+        conversation_id: Conversation identifier to delete
+        jwt_user_id: Authenticated user ID from JWT token
+        session: Database session
+
+    Returns:
+        None (204 No Content)
+
+    Raises:
+        HTTPException: 401 if JWT invalid
+        HTTPException: 403 if accessing other user's conversation
+        HTTPException: 404 if conversation not found
+        HTTPException: 500 if internal error
+    """
+    # Validate user ownership
+    validate_user_ownership(jwt_user_id, user_id)
+
+    try:
+        # Delete conversation
+        await chat_service.delete_conversation(
+            session=session,
+            user_id=jwt_user_id,
+            conversation_id=conversation_id
+        )
+
+        logger.info(f"Chat endpoint: delete_conversation success for user_id={user_id}, conversation_id={conversation_id}")
+
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Chat endpoint: delete_conversation error for user_id={user_id}: {str(e)}", exc_info=True)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Internal server error: {str(e)}"
+        )

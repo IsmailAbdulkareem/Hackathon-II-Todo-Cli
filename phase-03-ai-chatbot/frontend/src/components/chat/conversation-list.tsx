@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { MessageSquare, Loader2, Trash2 } from "lucide-react";
+import { toast } from "sonner";
 
 interface Conversation {
   id: string;
@@ -80,7 +81,8 @@ export function ConversationList({
       const token = localStorage.getItem("auth_token");
 
       if (!userId || !token) {
-        throw new Error("Not authenticated");
+        toast.error("Not authenticated");
+        return;
       }
 
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
@@ -95,7 +97,8 @@ export function ConversationList({
       );
 
       if (!response.ok) {
-        throw new Error("Failed to delete conversation");
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.detail || "Failed to delete conversation");
       }
 
       // Remove from local state
@@ -105,8 +108,11 @@ export function ConversationList({
       if (activeConversationId === conversationId) {
         onNewConversation();
       }
+
+      toast.success("Conversation deleted successfully");
     } catch (err) {
-      alert(err instanceof Error ? err.message : "Failed to delete conversation");
+      console.error("Delete conversation error:", err);
+      toast.error(err instanceof Error ? err.message : "Failed to delete conversation");
     } finally {
       setDeletingId(null);
     }
