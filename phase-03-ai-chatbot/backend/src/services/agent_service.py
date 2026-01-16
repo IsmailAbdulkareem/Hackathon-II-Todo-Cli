@@ -171,8 +171,8 @@ If a command is ambiguous and matches multiple tasks, present a numbered list an
             # Load conversation history
             history = await self._load_conversation_history(session, conversation.id)
 
-            # Run agent with message using Runner
-            result = Runner.run(
+            # Run agent with message using Runner (must await!)
+            result = await Runner.run(
                 starting_agent=self.agent,
                 input=message,
                 context={"user_id": user_id, "history": history}
