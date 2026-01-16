@@ -10,6 +10,7 @@ from src.core.auth import get_current_user_id, validate_user_ownership
 from src.core.database import get_session
 from src.core.rate_limiter import chat_rate_limiter
 from src.services.chat_service import chat_service
+from src.services.agent_service import task_agent
 
 # Configure logging
 logger = logging.getLogger(__name__)
@@ -122,61 +123,21 @@ async def send_chat_message(
                 detail="Message cannot be empty"
             )
 
-        # Get or create conversation
-        try:
-            conversation = await chat_service.get_or_create_conversation(
-                session=session,
-                user_id=jwt_user_id,
-                conversation_id=request.conversation_id
-            )
-            logger.info(f"Chat endpoint: Conversation retrieved/created - conversation_id={conversation.id}, user_id={user_id}")
-        except ValueError as e:
-            logger.warning(f"Chat endpoint: Conversation not found for user_id={user_id}, conversation_id={request.conversation_id}")
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=str(e)
-            )
-
-        # Load message history (last 50 messages)
-        message_history = await chat_service.load_messages(
+        # Process message with OpenAI Agents SDK
+        logger.info(f"Chat endpoint: Processing message with OpenAI Agents SDK for user_id={user_id}")
+        result = await task_agent.process_message(
             session=session,
-            conversation_id=conversation.id,
-            limit=50
-        )
-        logger.info(f"Chat endpoint: Loaded {len(message_history)} messages for conversation_id={conversation.id}")
-
-        # Run OpenAI agent with conversation context
-        agent_result = await chat_service.run_agent(
             user_id=jwt_user_id,
-            user_message=request.message,
-            conversation_history=message_history
-        )
-        logger.info(f"Chat endpoint: OpenAI agent executed - {len(agent_result.get('tool_calls', []))} tool calls made")
-
-        # Persist user message
-        await chat_service.save_message(
-            session=session,
-            conversation_id=conversation.id,
-            user_id=jwt_user_id,
-            role="user",
-            content=request.message
+            message=request.message,
+            conversation_id=request.conversation_id
         )
 
-        # Persist assistant response
-        await chat_service.save_message(
-            session=session,
-            conversation_id=conversation.id,
-            user_id=jwt_user_id,
-            role="assistant",
-            content=agent_result["response"]
-        )
-        logger.info(f"Chat endpoint: Messages persisted for conversation_id={conversation.id}")
+        logger.info(f"Chat endpoint: Agent processed message - conversation_id={result['conversation_id']}, tool_calls={len(result['tool_calls'])}")
 
-        logger.info(f"Chat endpoint: send_chat_message success for user_id={user_id}, conversation_id={conversation.id}")
         return ChatResponse(
-            conversation_id=conversation.id,
-            response=agent_result["response"],
-            tool_calls=agent_result["tool_calls"]
+            conversation_id=UUID(result["conversation_id"]),
+            response=result["response"],
+            tool_calls=result["tool_calls"]
         )
 
     except HTTPException:
