@@ -112,6 +112,12 @@ export function ChatInterface() {
         created_at: new Date().toISOString(),
       };
       setNewMessages((prev) => [...prev, assistantMessage]);
+
+      // Trigger task list refresh if any tool calls were made
+      if (data.tool_calls && data.tool_calls.length > 0) {
+        // Dispatch custom event to refresh tasks
+        window.dispatchEvent(new Event('refreshTasks'));
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to send message");
       // Remove the temporary user message if request failed

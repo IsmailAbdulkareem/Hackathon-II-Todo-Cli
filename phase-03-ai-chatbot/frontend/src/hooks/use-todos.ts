@@ -50,6 +50,25 @@ export function useTodos() {
   const [isInitialized, setIsInitialized] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
 
+  // Function to reload tasks
+  const reloadTasks = useCallback(async () => {
+    const authenticated = authService.isAuthenticated();
+    if (authenticated) {
+      // Load from backend API
+      try {
+        const apiTasks = await apiService.getTasks();
+        const frontendTasks = apiTasks.map(apiTaskToFrontendTask);
+        setTasks(frontendTasks);
+      } catch (error) {
+        console.error('Failed to load tasks from API:', error);
+      }
+    } else {
+      // Load from local storage
+      const localTasks = loadLocalTasks();
+      setTasks(localTasks);
+    }
+  }, []);
+
   // Check authentication and load tasks
   useEffect(() => {
     const authenticated = authService.isAuthenticated();
@@ -75,7 +94,18 @@ export function useTodos() {
     };
 
     loadTasks();
-  }, []);
+
+    // Listen for task refresh events from chat
+    const handleTaskRefresh = () => {
+      reloadTasks();
+    };
+
+    window.addEventListener('refreshTasks', handleTaskRefresh);
+
+    return () => {
+      window.removeEventListener('refreshTasks', handleTaskRefresh);
+    };
+  }, [reloadTasks]);
 
   const addTask = useCallback(async (data: TaskCreate) => {
     if (isAuthenticated) {
