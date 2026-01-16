@@ -50,7 +50,7 @@ export function MessageList({ conversationId, newMessages = [] }: MessageListPro
       setError(null);
 
       const userId = localStorage.getItem("user_id");
-      const token = localStorage.getItem("token");
+      const token = localStorage.getItem("auth_token");
 
       if (!userId || !token) {
         setError("Not authenticated");
