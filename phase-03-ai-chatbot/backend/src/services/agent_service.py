@@ -3,7 +3,7 @@ from datetime import datetime, timezone
 from typing import Optional, Any
 from uuid import UUID
 from sqlmodel import Session, select, desc
-from agents import Agent, function_tool, run
+from agents import Agent, function_tool, Runner
 from src.models.conversation import Conversation
 from src.models.message import Message
 from src.core.config import settings
@@ -171,9 +171,9 @@ If a command is ambiguous and matches multiple tasks, present a numbered list an
             # Load conversation history
             history = await self._load_conversation_history(session, conversation.id)
 
-            # Run agent with message
-            result = await run(
-                agent=self.agent,
+            # Run agent with message using Runner
+            result = Runner.run(
+                starting_agent=self.agent,
                 input=message,
                 context={"user_id": user_id, "history": history}
             )
