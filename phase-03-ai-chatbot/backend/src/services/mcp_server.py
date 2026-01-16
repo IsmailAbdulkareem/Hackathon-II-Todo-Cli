@@ -72,9 +72,12 @@ class MCPServer:
                     user_id=user_id,
                     title=title.strip(),
                     description=description.strip() if description else None,
-                    priority=priority,
                     completed=False
                 )
+                # Only set priority if the column exists (after migration)
+                if priority and hasattr(Task, 'priority'):
+                    task.priority = priority
+
                 session.add(task)
                 session.commit()
                 session.refresh(task)
@@ -84,7 +87,7 @@ class MCPServer:
                     "task_id": str(task.id),
                     "status": "created",
                     "title": task.title,
-                    "priority": task.priority
+                    "priority": getattr(task, 'priority', 1)
                 }
             finally:
                 session.close()
@@ -133,7 +136,7 @@ class MCPServer:
                         "id": str(task.id),
                         "title": task.title,
                         "description": task.description,
-                        "priority": task.priority,
+                        "priority": getattr(task, 'priority', 1),  # Default to 1 if column doesn't exist
                         "completed": task.completed,
                         "created_at": task.created_at.isoformat(),
                         "updated_at": task.updated_at.isoformat()
@@ -324,7 +327,7 @@ class MCPServer:
                     task.title = title.strip()
                 if description:
                     task.description = description.strip()
-                if priority is not None:
+                if priority is not None and hasattr(task, 'priority'):
                     task.priority = priority
 
                 session.add(task)
@@ -336,7 +339,7 @@ class MCPServer:
                     "task_id": str(task.id),
                     "status": "updated",
                     "title": task.title,
-                    "priority": task.priority
+                    "priority": getattr(task, 'priority', 1)
                 }
             finally:
                 session.close()
@@ -382,7 +385,7 @@ class MCPServer:
                         "id": str(task.id),
                         "title": task.title,
                         "description": task.description,
-                        "priority": task.priority,
+                        "priority": getattr(task, 'priority', 1),  # Default to 1 if column doesn't exist
                         "completed": task.completed,
                         "created_at": task.created_at.isoformat(),
                         "updated_at": task.updated_at.isoformat()

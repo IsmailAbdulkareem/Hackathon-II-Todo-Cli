@@ -19,7 +19,7 @@ class TaskBase(SQLModel):
         max_length=2000,
         description="Task description (optional, max 2000 characters)"
     )
-    priority: int = Field(
+    priority: Optional[int] = Field(
         default=1,
         ge=1,
         le=5,
