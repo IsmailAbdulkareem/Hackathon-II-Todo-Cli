@@ -17,7 +17,8 @@ if not DATABASE_URL:
 # Migration files in order
 migrations = [
     "migrations/add_conversations.sql",
-    "migrations/add_messages.sql"
+    "migrations/add_messages.sql",
+    "migrations/add_priority_to_tasks.sql"
 ]
 
 def run_migration(conn, migration_file):

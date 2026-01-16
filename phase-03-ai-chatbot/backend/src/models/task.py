@@ -19,6 +19,12 @@ class TaskBase(SQLModel):
         max_length=2000,
         description="Task description (optional, max 2000 characters)"
     )
+    priority: int = Field(
+        default=1,
+        ge=1,
+        le=5,
+        description="Task priority (1-5, where 1 is lowest and 5 is highest)"
+    )
 
     @field_validator("title")
     @classmethod

@@ -34,7 +34,8 @@ class MCPServer:
         self,
         user_id: str,
         title: str,
-        description: Optional[str] = None
+        description: Optional[str] = None,
+        priority: int = 1
     ) -> dict[str, Any]:
         """
         Create a new task for the user.
@@ -43,11 +44,12 @@ class MCPServer:
             user_id: User identifier (UUID format)
             title: Task title (max 200 characters)
             description: Optional task description (max 2000 characters)
+            priority: Task priority (1-5, where 1 is lowest and 5 is highest)
 
         Returns:
-            dict: {task_id: str, status: str, title: str} or {error: str}
+            dict: {task_id: str, status: str, title: str, priority: int} or {error: str}
         """
-        logger.info(f"MCP Tool: add_task called for user_id={user_id}, title='{title[:50]}...'")
+        logger.info(f"MCP Tool: add_task called for user_id={user_id}, title='{title[:50]}...', priority={priority}")
         try:
             # Validate character limits
             if len(title) > 200:
@@ -58,6 +60,11 @@ class MCPServer:
                 logger.warning(f"MCP Tool: add_task failed - description exceeds 2000 chars for user_id={user_id}")
                 return {"status": "error", "error": "Description exceeds 2000 character limit"}
 
+            # Validate priority
+            if priority < 1 or priority > 5:
+                logger.warning(f"MCP Tool: add_task failed - invalid priority {priority} for user_id={user_id}")
+                return {"status": "error", "error": "Priority must be between 1 and 5"}
+
             # Create task in database
             session = next(get_session())
             try:
@@ -65,6 +72,7 @@ class MCPServer:
                     user_id=user_id,
                     title=title.strip(),
                     description=description.strip() if description else None,
+                    priority=priority,
                     completed=False
                 )
                 session.add(task)
@@ -75,7 +83,8 @@ class MCPServer:
                 return {
                     "task_id": str(task.id),
                     "status": "created",
-                    "title": task.title
+                    "title": task.title,
+                    "priority": task.priority
                 }
             finally:
                 session.close()
@@ -124,6 +133,7 @@ class MCPServer:
                         "id": str(task.id),
                         "title": task.title,
                         "description": task.description,
+                        "priority": task.priority,
                         "completed": task.completed,
                         "created_at": task.created_at.isoformat(),
                         "updated_at": task.updated_at.isoformat()
@@ -253,28 +263,30 @@ class MCPServer:
         user_id: str,
         task_id: str,
         title: Optional[str] = None,
-        description: Optional[str] = None
+        description: Optional[str] = None,
+        priority: Optional[int] = None
     ) -> dict[str, Any]:
         """
-        Modify a task's title or description.
+        Modify a task's title, description, or priority.
 
         Args:
             user_id: User identifier (UUID format)
             task_id: Task identifier to update
             title: New task title (max 200 characters)
             description: New task description (max 2000 characters)
+            priority: New task priority (1-5, where 1 is lowest and 5 is highest)
 
         Returns:
-            dict: {task_id: str, status: str, title: str} or {error: str}
+            dict: {task_id: str, status: str, title: str, priority: int} or {error: str}
         """
         logger.info(f"MCP Tool: update_task called for user_id={user_id}, task_id={task_id}")
         try:
             # Validate at least one field is provided
-            if not title and not description:
+            if not title and not description and priority is None:
                 logger.warning(f"MCP Tool: update_task failed - no fields provided for user_id={user_id}, task_id={task_id}")
                 return {
                     "status": "error",
-                    "error": "Must provide at least title or description to update"
+                    "error": "Must provide at least title, description, or priority to update"
                 }
 
             # Validate character limits
@@ -285,6 +297,11 @@ class MCPServer:
             if description and len(description) > 2000:
                 logger.warning(f"MCP Tool: update_task failed - description exceeds 2000 chars for user_id={user_id}, task_id={task_id}")
                 return {"status": "error", "error": "Description exceeds 2000 character limit"}
+
+            # Validate priority
+            if priority is not None and (priority < 1 or priority > 5):
+                logger.warning(f"MCP Tool: update_task failed - invalid priority {priority} for user_id={user_id}, task_id={task_id}")
+                return {"status": "error", "error": "Priority must be between 1 and 5"}
 
             session = next(get_session())
             try:
@@ -307,6 +324,8 @@ class MCPServer:
                     task.title = title.strip()
                 if description:
                     task.description = description.strip()
+                if priority is not None:
+                    task.priority = priority
 
                 session.add(task)
                 session.commit()
@@ -316,7 +335,8 @@ class MCPServer:
                 return {
                     "task_id": str(task.id),
                     "status": "updated",
-                    "title": task.title
+                    "title": task.title,
+                    "priority": task.priority
                 }
             finally:
                 session.close()
@@ -362,6 +382,7 @@ class MCPServer:
                         "id": str(task.id),
                         "title": task.title,
                         "description": task.description,
+                        "priority": task.priority,
                         "completed": task.completed,
                         "created_at": task.created_at.isoformat(),
                         "updated_at": task.updated_at.isoformat()

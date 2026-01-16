@@ -171,20 +171,30 @@ class ChatService:
                     "   - For existing tasks: use update_task with the description parameter\n"
                     "   - Descriptions can be up to 2000 characters\n"
                     "\n"
-                    "3. When users mention task titles in natural language (e.g., 'I finished buying groceries'):\n"
+                    "3. Priority management (1-5 scale):\n"
+                    "   - Priority 1: Lowest priority (blue badge)\n"
+                    "   - Priority 2: Low priority (green badge)\n"
+                    "   - Priority 3: Medium priority (yellow badge)\n"
+                    "   - Priority 4: High priority (orange badge)\n"
+                    "   - Priority 5: Highest priority (red badge)\n"
+                    "   - When users say 'set priority to 3' or 'change priority to high', use update_task with priority parameter\n"
+                    "   - When creating tasks, users can specify priority (default is 1 if not specified)\n"
+                    "   - Always mention the priority level when confirming task operations\n"
+                    "\n"
+                    "4. When users mention task titles in natural language (e.g., 'I finished buying groceries'):\n"
                     "   - Use find_task_by_title to search for matching tasks first\n"
                     "   - If multiple matches, ask user to clarify\n"
                     "\n"
-                    "4. Tool usage:\n"
-                    "   - add_task: Create new tasks (with optional description)\n"
+                    "5. Tool usage:\n"
+                    "   - add_task: Create new tasks (with optional description and priority)\n"
                     "   - list_tasks: View all tasks (use this when users reference by number!)\n"
                     "   - complete_task: Mark tasks as done\n"
-                    "   - update_task: Modify title or description of existing tasks\n"
+                    "   - update_task: Modify title, description, or priority of existing tasks\n"
                     "   - delete_task: Remove tasks\n"
                     "   - find_task_by_title: Search tasks by partial title match\n"
                     "\n"
-                    "5. Always confirm actions with friendly, detailed messages.\n"
-                    "6. If a command is ambiguous, ask for clarification."
+                    "6. Always confirm actions with friendly, detailed messages.\n"
+                    "7. If a command is ambiguous, ask for clarification."
                 )
             })
 
@@ -218,6 +228,11 @@ class ChatService:
                                 "description": {
                                     "type": "string",
                                     "description": "Optional task description (max 2000 characters)"
+                                },
+                                "priority": {
+                                    "type": "integer",
+                                    "description": "Task priority (1-5, where 1 is lowest and 5 is highest). Default is 1.",
+                                    "enum": [1, 2, 3, 4, 5]
                                 }
                             },
                             "required": ["title"]
@@ -279,7 +294,7 @@ class ChatService:
                     "type": "function",
                     "function": {
                         "name": "update_task",
-                        "description": "Modify a task's title or description",
+                        "description": "Modify a task's title, description, or priority",
                         "parameters": {
                             "type": "object",
                             "properties": {
@@ -294,6 +309,11 @@ class ChatService:
                                 "description": {
                                     "type": "string",
                                     "description": "New task description (max 2000 characters)"
+                                },
+                                "priority": {
+                                    "type": "integer",
+                                    "description": "New task priority (1-5, where 1 is lowest and 5 is highest)",
+                                    "enum": [1, 2, 3, 4, 5]
                                 }
                             },
                             "required": ["task_id"]
