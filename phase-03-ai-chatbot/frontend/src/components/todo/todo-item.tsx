@@ -1,12 +1,12 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Task } from '@/types/todo';
 import { cn } from '@/lib/utils';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
-import { Trash2, Edit2, Clock, CheckCircle2 } from 'lucide-react';
+import { Trash2, Edit2, Clock, CheckCircle2, ChevronDown, ChevronUp } from 'lucide-react';
 
 interface TodoItemProps {
   task: Task;
@@ -24,6 +24,10 @@ const priorityColors = {
 };
 
 export function TodoItem({ task, onToggle, onDelete, onEdit }: TodoItemProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  const descriptionLength = task.description?.length || 0;
+  const shouldShowToggle = descriptionLength > 150;
+
   return (
     <motion.div
       layout
@@ -68,12 +72,33 @@ export function TodoItem({ task, onToggle, onDelete, onEdit }: TodoItemProps) {
         </div>
 
         {task.description && (
-          <p className={cn(
-            "text-sm mb-3 line-clamp-2 transition-all duration-300",
-            task.completed ? "line-through text-neutral-400 dark:text-neutral-600" : "text-neutral-600 dark:text-neutral-400"
-          )}>
-            {task.description}
-          </p>
+          <div className="mb-3">
+            <p className={cn(
+              "text-sm transition-all duration-300 whitespace-pre-wrap",
+              task.completed ? "line-through text-neutral-400 dark:text-neutral-600" : "text-neutral-600 dark:text-neutral-400",
+              !isExpanded && shouldShowToggle && "line-clamp-2"
+            )}>
+              {task.description}
+            </p>
+            {shouldShowToggle && (
+              <button
+                onClick={() => setIsExpanded(!isExpanded)}
+                className="mt-2 text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 flex items-center gap-1 transition-colors"
+              >
+                {isExpanded ? (
+                  <>
+                    <ChevronUp className="w-3.5 h-3.5" />
+                    Show less
+                  </>
+                ) : (
+                  <>
+                    <ChevronDown className="w-3.5 h-3.5" />
+                    Show more
+                  </>
+                )}
+              </button>
+            )}
+          </div>
         )}
 
         <div className="flex items-center gap-4 text-[11px] text-neutral-500 dark:text-neutral-500 font-medium">
@@ -94,7 +119,7 @@ export function TodoItem({ task, onToggle, onDelete, onEdit }: TodoItemProps) {
         </div>
       </div>
 
-      <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-all duration-300 transform group-hover:translate-x-0 translate-x-2">
+      <div className="flex gap-2 transition-all duration-300">
         <Button
           variant="ghost"
           size="icon"
