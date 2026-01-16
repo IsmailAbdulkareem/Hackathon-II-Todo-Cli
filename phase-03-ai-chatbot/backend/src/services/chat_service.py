@@ -313,6 +313,26 @@ class ChatService:
 
             # Handle tool calls if any
             if assistant_message.tool_calls:
+                logger.info(f"Processing {len(assistant_message.tool_calls)} tool calls")
+
+                # Add assistant message with tool calls to conversation
+                messages.append({
+                    "role": "assistant",
+                    "content": assistant_message.content,
+                    "tool_calls": [
+                        {
+                            "id": tc.id,
+                            "type": "function",
+                            "function": {
+                                "name": tc.function.name,
+                                "arguments": tc.function.arguments
+                            }
+                        }
+                        for tc in assistant_message.tool_calls
+                    ]
+                })
+
+                # Execute each tool and add results to messages
                 for tool_call in assistant_message.tool_calls:
                     tool_name = tool_call.function.name
                     tool_args = eval(tool_call.function.arguments)  # Parse JSON arguments
@@ -329,8 +349,29 @@ class ChatService:
                             "result": tool_result
                         })
 
+                        # Add tool result to messages
+                        messages.append({
+                            "role": "tool",
+                            "tool_call_id": tool_call.id,
+                            "content": str(tool_result)
+                        })
+                        logger.info(f"Tool {tool_name} executed, result added to messages")
+
+                # Call OpenAI again to generate natural response based on tool results
+                logger.info("Calling OpenAI to generate natural response from tool results")
+                final_response = await self.openai_client.chat.completions.create(
+                    model=self.model,
+                    messages=messages
+                )
+                logger.info(f"Natural response generated: {final_response.choices[0].message.content[:100]}...")
+
+                return {
+                    "response": final_response.choices[0].message.content or "Task operation completed.",
+                    "tool_calls": tool_calls_made
+                }
+
             return {
-                "response": assistant_message.content or "Task operation completed.",
+                "response": assistant_message.content or "I'm here to help! What would you like to do?",
                 "tool_calls": tool_calls_made
             }
 
