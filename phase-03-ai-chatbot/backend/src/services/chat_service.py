@@ -2,12 +2,17 @@
 from datetime import datetime, timezone
 from typing import Optional, Any
 from uuid import UUID
+import logging
 from sqlmodel import Session, select, desc, func
 from openai import AsyncOpenAI
 from src.models.conversation import Conversation
 from src.models.message import Message
 from src.core.config import settings
 from src.services.mcp_server import mcp_server
+
+# Configure logging
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
 
 
 class ChatService:
@@ -330,8 +335,9 @@ class ChatService:
             }
 
         except Exception as e:
+            logger.error(f"OpenAI agent error: {type(e).__name__}: {str(e)}", exc_info=True)
             return {
-                "response": f"I encountered an error: {str(e)}. Please try again.",
+                "response": f"I encountered an error: {type(e).__name__}: {str(e)}. Please try again.",
                 "tool_calls": []
             }
 
