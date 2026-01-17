@@ -47,7 +47,7 @@ export function TodoItem({ task, onToggle, onDelete, onEdit }: TodoItemProps) {
         </div>
       )}
 
-      <div className="pt-1 cursor-pointer" onClick={() => onToggle(task.id)}>
+      <div className="pt-1">
         <Checkbox
           checked={task.completed}
           onCheckedChange={() => onToggle(task.id)}
