@@ -102,8 +102,19 @@ export function useTodos() {
 
     window.addEventListener('refreshTasks', handleTaskRefresh);
 
+    // Auto-refresh tasks every 5 seconds when authenticated
+    let refreshInterval: NodeJS.Timeout | null = null;
+    if (authenticated) {
+      refreshInterval = setInterval(() => {
+        reloadTasks();
+      }, 5000); // Refresh every 5 seconds
+    }
+
     return () => {
       window.removeEventListener('refreshTasks', handleTaskRefresh);
+      if (refreshInterval) {
+        clearInterval(refreshInterval);
+      }
     };
   }, [reloadTasks]);
 
