@@ -1,0 +1,1 @@
+# Hugging Face Backend\n\nThe Hugging Face Space backend is located in the `TODO_APP` folder at the root of this repository.\n\nIt has been deployed to: https://ismail233290-todo-app.hf.space\n\nThe backend code is identical to the `phase-03-ai-chatbot/backend` folder but is maintained separately for Hugging Face Space deployment.
