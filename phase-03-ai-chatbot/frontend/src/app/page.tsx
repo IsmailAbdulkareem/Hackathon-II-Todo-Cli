@@ -1,233 +1,405 @@
 'use client';
 
-import { useTodos } from '@/hooks/use-todos';
-import { TodoForm } from '@/components/todo/todo-form';
-import { TodoList } from '@/components/todo/todo-list';
-import { Layout, AlertCircle, Loader2, MessageCircle } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import { Task } from '@/types/todo';
-import { authService } from '@/lib/auth-service';
+import { motion, useScroll, useTransform, useSpring } from 'framer-motion';
+import {
+  CheckCircle2,
+  Sparkles,
+  Zap,
+  Target,
+  MessageSquare,
+  ArrowRight,
+  ListTodo,
+  Brain,
+  Clock
+} from 'lucide-react';
 import Link from 'next/link';
-import { ThemeToggle } from '@/components/theme-toggle';
-import { UserProfile } from '@/components/user-profile';
-import { MotivationalQuote } from '@/components/motivational-quote';
-import { toast } from 'sonner';
+import { useEffect, useState } from 'react';
 
-export default function Home() {
-  const { tasks, addTask, updateTask, toggleTask, deleteTask, isInitialized } = useTodos();
-  const [editingTask, setEditingTask] = useState<Task | null>(null);
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [isLoading, setIsLoading] = useState(false);
+export default function LandingPage() {
+  const [mousePosition, setMousePosition] = useState({ x: 0, y: 0 });
+  const { scrollYProgress } = useScroll();
+  const y = useSpring(useTransform(scrollYProgress, [0, 1], [0, -50]), {
+    stiffness: 100,
+    damping: 30,
+  });
 
-  // Check authentication on mount
   useEffect(() => {
-    setIsAuthenticated(authService.isAuthenticated());
+    const handleMouseMove = (e: MouseEvent) => {
+      setMousePosition({ x: e.clientX, y: e.clientY });
+    };
+    window.addEventListener('mousemove', handleMouseMove);
+    return () => window.removeEventListener('mousemove', handleMouseMove);
   }, []);
 
-  const handleLogout = () => {
-    setIsAuthenticated(false);
-    toast.success('Logged out successfully');
-    setTimeout(() => {
-      window.location.reload();
-    }, 500);
-  };
-
-  if (!isInitialized) {
-    return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950">
-        <div className="text-center space-y-4">
-          <Loader2 className="w-12 h-12 text-blue-600 dark:text-blue-400 animate-spin mx-auto" />
-          <p className="text-sm text-neutral-600 dark:text-neutral-400 animate-pulse">Loading your tasks...</p>
-        </div>
-      </div>
-    );
-  }
-
-  const handleFormSubmit = async (data: any) => {
-    setIsLoading(true);
-    try {
-      if (editingTask) {
-        await updateTask(editingTask.id, data);
-        setEditingTask(null);
-        toast.success('Task updated successfully!', {
-          description: 'Your changes have been saved.',
-        });
-      } else {
-        await addTask(data);
-        toast.success('Task created successfully!', {
-          description: 'Keep up the great work!',
-        });
-      }
-    } catch (error: any) {
-      toast.error('Oops! Something went wrong', {
-        description: error.message || 'Please try again.',
-      });
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleToggle = async (id: string) => {
-    try {
-      // Get the task BEFORE toggling to show correct message
-      const task = tasks.find(t => t.id === id);
-      const wasCompleted = task?.completed || false;
-
-      await toggleTask(id);
-
-      // Show message based on the OLD state (before toggle)
-      if (!wasCompleted) {
-        toast.success('Task completed! 🎉', {
-          description: 'Great job on finishing this task!',
-        });
-      } else {
-        toast.info('Task reopened', {
-          description: 'Keep working on it!',
-        });
-      }
-    } catch (error: any) {
-      toast.error('Failed to update task', {
-        description: error.message || 'Please try again.',
-      });
-    }
-  };
-
-  const handleDelete = async (id: string) => {
-    try {
-      await deleteTask(id);
-      toast.success('Task deleted', {
-        description: 'The task has been removed.',
-      });
-    } catch (error: any) {
-      toast.error('Failed to delete task', {
-        description: error.message || 'Please try again.',
-      });
-    }
-  };
+  const floatingCards = [
+    { text: 'Buy groceries', color: 'from-blue-500 to-cyan-500', delay: 0 },
+    { text: 'Team meeting', color: 'from-purple-500 to-pink-500', delay: 0.2 },
+    { text: 'Finish report', color: 'from-indigo-500 to-blue-500', delay: 0.4 },
+  ];
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 transition-colors duration-500">
-      <div className="max-w-5xl mx-auto p-4 md:p-8 space-y-6">
-        {/* Header Section */}
-        <header className="space-y-4 animate-in fade-in slide-in-from-top duration-700">
-          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <div className="flex items-center gap-4">
-              <div className="p-3 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl shadow-lg shadow-blue-500/50 dark:shadow-blue-500/30 transform hover:scale-110 transition-transform duration-300">
-                <Layout className="w-7 h-7 text-white" />
-              </div>
-              <div>
-                <h1 className="text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  Task Manager
-                </h1>
-                <p className="text-xs sm:text-sm text-neutral-600 dark:text-neutral-400">
-                  Organize your life, one task at a time
-                </p>
-              </div>
-            </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-950 via-blue-950 to-purple-950 text-white overflow-hidden">
+      {/* Animated background grid */}
+      <div className="fixed inset-0 opacity-20">
+        <div className="absolute inset-0" style={{
+          backgroundImage: `
+            linear-gradient(to right, rgba(99, 102, 241, 0.1) 1px, transparent 1px),
+            linear-gradient(to bottom, rgba(99, 102, 241, 0.1) 1px, transparent 1px)
+          `,
+          backgroundSize: '4rem 4rem',
+        }} />
+      </div>
 
-            <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-end">
-              <ThemeToggle />
-              {isAuthenticated && (
-                <Link
-                  href="/chat"
-                  className="flex items-center gap-2 px-3 sm:px-4 py-2 text-sm bg-gradient-to-r from-green-600 to-emerald-600 hover:from-green-700 hover:to-emerald-700 text-white font-medium rounded-lg shadow-lg shadow-green-500/50 dark:shadow-green-500/30 transition-all duration-300 transform hover:scale-105 cursor-pointer whitespace-nowrap"
+      {/* Gradient orbs */}
+      <motion.div
+        className="fixed w-96 h-96 rounded-full bg-gradient-to-r from-blue-500/30 to-purple-500/30 blur-3xl"
+        style={{
+          left: mousePosition.x - 192,
+          top: mousePosition.y - 192,
+        }}
+        transition={{ type: 'spring', damping: 30 }}
+      />
+      <div className="fixed top-20 right-20 w-96 h-96 rounded-full bg-gradient-to-r from-purple-500/20 to-pink-500/20 blur-3xl animate-pulse" />
+
+      {/* Hero Section */}
+      <section className="relative min-h-screen flex items-center justify-center px-6 py-20">
+        <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-12 items-center">
+          {/* Left: Content */}
+          <motion.div
+            initial={{ opacity: 0, x: -50 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ duration: 0.8, ease: 'easeOut' }}
+            className="space-y-8"
+          >
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.6 }}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-gradient-to-r from-blue-500/20 to-purple-500/20 border border-blue-500/30 backdrop-blur-sm"
+            >
+              <Sparkles className="w-4 h-4 text-blue-400" />
+              <span className="text-sm font-medium text-blue-300">AI-Powered Task Management</span>
+            </motion.div>
+
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3, duration: 0.6 }}
+              className="text-6xl lg:text-7xl font-black leading-tight"
+              style={{ fontFamily: 'system-ui, -apple-system, sans-serif' }}
+            >
+              Organize Your Life,{' '}
+              <span className="bg-gradient-to-r from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent">
+                Effortlessly
+              </span>
+            </motion.h1>
+
+            <motion.p
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4, duration: 0.6 }}
+              className="text-xl text-slate-300 leading-relaxed max-w-xl"
+            >
+              Transform chaos into clarity with intelligent task management.
+              Let AI handle the complexity while you focus on what matters.
+            </motion.p>
+
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5, duration: 0.6 }}
+              className="flex flex-wrap gap-4"
+            >
+              <Link href="/tasks">
+                <motion.button
+                  whileHover={{ scale: 1.05, boxShadow: '0 20px 40px rgba(59, 130, 246, 0.4)' }}
+                  whileTap={{ scale: 0.95 }}
+                  className="group px-8 py-4 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl font-bold text-lg shadow-2xl shadow-blue-500/50 flex items-center gap-3 transition-all"
                 >
-                  <MessageCircle className="w-4 h-4" />
-                  <span className="hidden sm:inline">Chat Assistant</span>
-                </Link>
-              )}
-              {isAuthenticated ? (
-                <UserProfile isAuthenticated={isAuthenticated} onLogout={handleLogout} />
-              ) : (
-                <Link
-                  href="/login"
-                  className="px-3 sm:px-4 py-2 text-sm bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-medium rounded-lg shadow-lg shadow-blue-500/50 dark:shadow-blue-500/30 transition-all duration-300 transform hover:scale-105 cursor-pointer whitespace-nowrap"
+                  Get Started
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </motion.button>
+              </Link>
+
+              <Link href="/chat">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  className="px-8 py-4 bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl font-bold text-lg hover:bg-white/20 transition-all flex items-center gap-3"
                 >
-                  Login
-                </Link>
-              )}
-            </div>
-          </div>
+                  <MessageSquare className="w-5 h-5" />
+                  Try AI Assistant
+                </motion.button>
+              </Link>
+            </motion.div>
 
-          {/* Motivational Quote */}
-          <MotivationalQuote />
-
-          {/* Warning Banner for Unauthenticated Users */}
-          {!isAuthenticated && (
-            <div className="bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-950/30 dark:to-orange-950/30 border border-yellow-200 dark:border-yellow-800 rounded-xl p-4 flex items-start gap-3 animate-in fade-in slide-in-from-top duration-700 delay-150">
-              <AlertCircle className="w-5 h-5 text-yellow-600 dark:text-yellow-500 flex-shrink-0 mt-0.5 animate-pulse" />
-              <div className="flex-1">
-                <h3 className="font-semibold text-yellow-900 dark:text-yellow-100 mb-1">
-                  You're using local storage mode
-                </h3>
-                <p className="text-sm text-yellow-800 dark:text-yellow-200">
-                  Your tasks are saved locally in your browser. To sync across devices and keep your tasks safe,{' '}
-                  <Link href="/login" className="underline font-medium hover:text-yellow-900 dark:hover:text-yellow-100 cursor-pointer">
-                    login to your account
-                  </Link>
-                  {' '}or{' '}
-                  <Link href="/register" className="underline font-medium hover:text-yellow-900 dark:hover:text-yellow-100 cursor-pointer">
-                    create a new account
-                  </Link>
-                  .
-                </p>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.6, duration: 0.6 }}
+              className="flex items-center gap-6 pt-4"
+            >
+              <div className="flex -space-x-3">
+                {[1, 2, 3, 4].map((i) => (
+                  <div
+                    key={i}
+                    className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-400 to-purple-600 border-2 border-slate-950"
+                  />
+                ))}
               </div>
-            </div>
-          )}
-        </header>
+              <div className="text-sm text-slate-400">
+                <span className="font-bold text-white">10,000+</span> tasks completed today
+              </div>
+            </motion.div>
+          </motion.div>
 
-        {/* Add/Edit Task Section */}
-        <section className="bg-white dark:bg-neutral-900 rounded-2xl shadow-xl border border-neutral-200 dark:border-neutral-800 p-6 space-y-4 animate-in fade-in slide-in-from-bottom duration-700 delay-200">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
-              {editingTask ? '✏️ Edit Task' : '➕ Add New Task'}
-            </h2>
-            {editingTask && (
-              <button
-                onClick={() => setEditingTask(null)}
-                className="text-sm text-neutral-600 dark:text-neutral-400 hover:text-neutral-900 dark:hover:text-neutral-100 underline cursor-pointer transition-colors duration-200"
+          {/* Right: Floating Cards */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 0.4, duration: 0.8 }}
+            className="relative h-[600px] hidden lg:block"
+          >
+            {floatingCards.map((card, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 50 }}
+                animate={{
+                  opacity: 1,
+                  y: 0,
+                  x: Math.sin(index * 2) * 20,
+                }}
+                transition={{
+                  delay: card.delay,
+                  duration: 0.8,
+                  y: {
+                    repeat: Infinity,
+                    repeatType: 'reverse',
+                    duration: 3 + index,
+                    ease: 'easeInOut',
+                  },
+                }}
+                className="absolute"
+                style={{
+                  top: `${index * 150 + 50}px`,
+                  left: `${index * 80}px`,
+                }}
               >
-                Cancel Edit
-              </button>
-            )}
-          </div>
-          <TodoForm
-            onSubmit={handleFormSubmit}
-            initialData={editingTask ? {
-              title: editingTask.title,
-              description: editingTask.description || undefined,
-              priority: editingTask.priority
-            } : undefined}
-            key={editingTask ? `edit-${editingTask.id}` : 'add-new'}
-            isLoading={isLoading}
-          />
-        </section>
+                <div className={`bg-gradient-to-br ${card.color} p-6 rounded-2xl shadow-2xl backdrop-blur-sm border border-white/20 min-w-[280px]`}>
+                  <div className="flex items-start gap-3">
+                    <div className="w-6 h-6 rounded-lg bg-white/20 flex items-center justify-center mt-1">
+                      <CheckCircle2 className="w-4 h-4" />
+                    </div>
+                    <div className="flex-1">
+                      <h3 className="font-bold text-lg mb-2">{card.text}</h3>
+                      <div className="flex items-center gap-2 text-sm text-white/80">
+                        <Clock className="w-4 h-4" />
+                        <span>Due today</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </motion.div>
+            ))}
+          </motion.div>
+        </div>
+      </section>
 
-        {/* Tasks List Section */}
-        <section className="bg-white dark:bg-neutral-900 rounded-2xl shadow-xl border border-neutral-200 dark:border-neutral-800 p-6 space-y-4 animate-in fade-in slide-in-from-bottom duration-700 delay-300">
-          <div className="flex items-center justify-between">
-            <h2 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
-              📋 Your Tasks
-              <span className="px-3 py-1 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-950 dark:to-purple-950 text-blue-700 dark:text-blue-300 rounded-full text-sm font-bold">
-                {tasks.length}
+      {/* Features Section */}
+      <section className="relative py-32 px-6">
+        <div className="max-w-7xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-20"
+          >
+            <h2 className="text-5xl font-black mb-6">
+              Everything You Need to{' '}
+              <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                Stay Organized
               </span>
             </h2>
-          </div>
-          <TodoList
-            tasks={tasks}
-            onToggle={handleToggle}
-            onDelete={handleDelete}
-            onEdit={setEditingTask}
-          />
-        </section>
+            <p className="text-xl text-slate-400 max-w-2xl mx-auto">
+              Powerful features designed to make task management intuitive and delightful
+            </p>
+          </motion.div>
 
-        {/* Footer */}
-        <footer className="text-center py-6 animate-in fade-in duration-700 delay-500">
-          <p className="text-sm text-neutral-500 dark:text-neutral-400">
-            Made with ❤️ using Spec-Driven Development
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+            {[
+              {
+                icon: ListTodo,
+                title: 'Smart Task Management',
+                description: 'Create, organize, and track tasks with an intuitive interface',
+                color: 'from-blue-500 to-cyan-500',
+                delay: 0,
+              },
+              {
+                icon: Brain,
+                title: 'AI Chatbot Assistant',
+                description: 'Manage tasks naturally with conversational AI',
+                color: 'from-purple-500 to-pink-500',
+                delay: 0.1,
+              },
+              {
+                icon: Target,
+                title: 'Priority System',
+                description: 'Focus on what matters with 5-level priority ranking',
+                color: 'from-indigo-500 to-purple-500',
+                delay: 0.2,
+              },
+              {
+                icon: Zap,
+                title: 'Real-time Sync',
+                description: 'Your tasks, everywhere, always up to date',
+                color: 'from-pink-500 to-rose-500',
+                delay: 0.3,
+              },
+            ].map((feature, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, y: 30 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: feature.delay, duration: 0.6 }}
+                whileHover={{ y: -10, scale: 1.02 }}
+                className="group relative"
+              >
+                <div className="absolute inset-0 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-3xl blur-xl group-hover:blur-2xl transition-all" />
+                <div className="relative bg-slate-900/50 backdrop-blur-sm border border-white/10 rounded-3xl p-8 h-full hover:border-white/20 transition-all">
+                  <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${feature.color} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform`}>
+                    <feature.icon className="w-7 h-7" />
+                  </div>
+                  <h3 className="text-2xl font-bold mb-3">{feature.title}</h3>
+                  <p className="text-slate-400 leading-relaxed">{feature.description}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* How It Works Section */}
+      <section className="relative py-32 px-6">
+        <div className="max-w-5xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="text-center mb-20"
+          >
+            <h2 className="text-5xl font-black mb-6">
+              Get Started in{' '}
+              <span className="bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">
+                Three Simple Steps
+              </span>
+            </h2>
+          </motion.div>
+
+          <div className="space-y-12">
+            {[
+              {
+                number: '01',
+                title: 'Create Your Account',
+                description: 'Sign up in seconds and start organizing your tasks immediately',
+                icon: Sparkles,
+              },
+              {
+                number: '02',
+                title: 'Add Your Tasks',
+                description: 'Use the intuitive interface or chat with our AI assistant',
+                icon: MessageSquare,
+              },
+              {
+                number: '03',
+                title: 'Stay Productive',
+                description: 'Track progress, set priorities, and accomplish your goals',
+                icon: Target,
+              },
+            ].map((step, index) => (
+              <motion.div
+                key={index}
+                initial={{ opacity: 0, x: -50 }}
+                whileInView={{ opacity: 1, x: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: index * 0.2, duration: 0.6 }}
+                className="flex gap-8 items-start group"
+              >
+                <div className="relative">
+                  <div className="text-8xl font-black text-transparent bg-gradient-to-br from-blue-500/20 to-purple-500/20 bg-clip-text">
+                    {step.number}
+                  </div>
+                  <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center group-hover:scale-110 transition-transform">
+                    <step.icon className="w-10 h-10" />
+                  </div>
+                </div>
+                <div className="flex-1 pt-8">
+                  <h3 className="text-3xl font-bold mb-3">{step.title}</h3>
+                  <p className="text-xl text-slate-400">{step.description}</p>
+                </div>
+              </motion.div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Final CTA Section */}
+      <section className="relative py-32 px-6">
+        <div className="max-w-4xl mx-auto text-center">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            whileInView={{ opacity: 1, scale: 1 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
+            className="relative"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-blue-500/30 to-purple-500/30 rounded-3xl blur-3xl" />
+            <div className="relative bg-gradient-to-br from-slate-900/80 to-slate-800/80 backdrop-blur-xl border border-white/20 rounded-3xl p-16">
+              <h2 className="text-5xl font-black mb-6">
+                Ready to Transform Your Productivity?
+              </h2>
+              <p className="text-xl text-slate-300 mb-10 max-w-2xl mx-auto">
+                Join thousands of users who have already discovered the power of intelligent task management
+              </p>
+              <div className="flex flex-wrap gap-4 justify-center">
+                <Link href="/tasks">
+                  <motion.button
+                    whileHover={{ scale: 1.05, boxShadow: '0 20px 40px rgba(59, 130, 246, 0.4)' }}
+                    whileTap={{ scale: 0.95 }}
+                    className="group px-10 py-5 bg-gradient-to-r from-blue-600 to-purple-600 rounded-2xl font-bold text-xl shadow-2xl shadow-blue-500/50 flex items-center gap-3"
+                  >
+                    <ListTodo className="w-6 h-6" />
+                    Start Managing Tasks
+                    <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                  </motion.button>
+                </Link>
+
+                <Link href="/chat">
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    className="px-10 py-5 bg-white/10 backdrop-blur-sm border border-white/20 rounded-2xl font-bold text-xl hover:bg-white/20 transition-all flex items-center gap-3"
+                  >
+                    <MessageSquare className="w-6 h-6" />
+                    Chat with AI
+                  </motion.button>
+                </Link>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </section>
+
+      {/* Footer */}
+      <footer className="relative py-12 px-6 border-t border-white/10">
+        <div className="max-w-7xl mx-auto text-center text-slate-400">
+          <p className="text-sm">
+            Made with ❤️ using Spec-Driven Development | © 2026 Task Manager
           </p>
-        </footer>
-      </div>
-    </main>
+        </div>
+      </footer>
+    </div>
   );
 }
