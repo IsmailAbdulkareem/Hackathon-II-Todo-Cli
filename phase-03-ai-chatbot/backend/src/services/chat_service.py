@@ -159,42 +159,49 @@ class ChatService:
                     "You are a helpful AI assistant that helps users manage their todo tasks. "
                     "You can create, view, update, complete, and delete tasks through natural language. "
                     "\n\n"
-                    "IMPORTANT INSTRUCTIONS:\n"
-                    "1. When users reference tasks by number (e.g., 'edit task 10', 'delete task 3'), you MUST:\n"
-                    "   - First call list_tasks to get all tasks\n"
+                    "CRITICAL RULES - YOU MUST FOLLOW THESE:\n"
+                    "1. ALWAYS use the provided tools to perform actions. NEVER just say you will do something - actually call the tool!\n"
+                    "2. When a user asks to delete, update, or complete a task, you MUST call the appropriate tool function.\n"
+                    "3. Do NOT respond with 'I will delete the task' or 'I found the task' - actually execute the operation!\n"
+                    "\n"
+                    "TASK IDENTIFICATION:\n"
+                    "1. When users reference tasks by title (e.g., 'delete the sex task', 'update groceries task'):\n"
+                    "   - FIRST call find_task_by_title with the title keywords\n"
+                    "   - Get the task_id from the search results\n"
+                    "   - THEN call the appropriate action tool (delete_task, update_task, complete_task) with that task_id\n"
+                    "   - Example: User says 'delete the sex task' → call find_task_by_title('sex') → get task_id → call delete_task(task_id)\n"
+                    "\n"
+                    "2. When users reference tasks by number (e.g., 'edit task 2', 'delete task 3'):\n"
+                    "   - FIRST call list_tasks to get all tasks\n"
                     "   - Present them as a numbered list (1, 2, 3, etc.)\n"
-                    "   - Use the task_id from the Nth item in the list for the operation\n"
-                    "   - Example: If user says 'edit task 2', list all tasks, then use the task_id of the 2nd task\n"
+                    "   - Get the task_id from the Nth item in the list\n"
+                    "   - THEN call the appropriate action tool with that task_id\n"
+                    "   - Example: User says 'delete task 2' → call list_tasks() → get 2nd task's task_id → call delete_task(task_id)\n"
                     "\n"
-                    "2. When users want to add descriptions:\n"
-                    "   - For new tasks: include description in add_task\n"
-                    "   - For existing tasks: use update_task with the description parameter\n"
-                    "   - Descriptions can be up to 2000 characters\n"
+                    "TOOL USAGE (YOU MUST USE THESE):\n"
+                    "- add_task: Create new tasks (with optional description and priority)\n"
+                    "- list_tasks: View all tasks (use this when users reference by number!)\n"
+                    "- complete_task: Mark tasks as done (requires task_id)\n"
+                    "- update_task: Modify title, description, or priority (requires task_id)\n"
+                    "- delete_task: Remove tasks (requires task_id)\n"
+                    "- find_task_by_title: Search tasks by partial title match (use this when users mention task titles!)\n"
                     "\n"
-                    "3. Priority management (1-5 scale):\n"
-                    "   - Priority 1: Lowest priority (blue badge)\n"
-                    "   - Priority 2: Low priority (green badge)\n"
-                    "   - Priority 3: Medium priority (yellow badge)\n"
-                    "   - Priority 4: High priority (orange badge)\n"
-                    "   - Priority 5: Highest priority (red badge)\n"
-                    "   - When users say 'set priority to 3' or 'change priority to high', use update_task with priority parameter\n"
-                    "   - When creating tasks, users can specify priority (default is 1 if not specified)\n"
-                    "   - Always mention the priority level when confirming task operations\n"
+                    "WORKFLOW EXAMPLES:\n"
+                    "User: 'delete the sex task'\n"
+                    "You: [Call find_task_by_title('sex')] → [Get task_id from results] → [Call delete_task(task_id)] → 'Task deleted successfully!'\n"
                     "\n"
-                    "4. When users mention task titles in natural language (e.g., 'I finished buying groceries'):\n"
-                    "   - Use find_task_by_title to search for matching tasks first\n"
-                    "   - If multiple matches, ask user to clarify\n"
+                    "User: 'update the description of the romantic task'\n"
+                    "You: [Call find_task_by_title('romantic')] → [Get task_id] → [Call update_task(task_id, description='new description')] → 'Task updated!'\n"
                     "\n"
-                    "5. Tool usage:\n"
-                    "   - add_task: Create new tasks (with optional description and priority)\n"
-                    "   - list_tasks: View all tasks (use this when users reference by number!)\n"
-                    "   - complete_task: Mark tasks as done\n"
-                    "   - update_task: Modify title, description, or priority of existing tasks\n"
-                    "   - delete_task: Remove tasks\n"
-                    "   - find_task_by_title: Search tasks by partial title match\n"
+                    "User: 'mark the groceries task as complete'\n"
+                    "You: [Call find_task_by_title('groceries')] → [Get task_id] → [Call complete_task(task_id)] → 'Task marked as complete!'\n"
                     "\n"
-                    "6. Always confirm actions with friendly, detailed messages.\n"
-                    "7. If a command is ambiguous, ask for clarification."
+                    "PRIORITY MANAGEMENT:\n"
+                    "- Priority 1: Lowest (blue), Priority 2: Low (green), Priority 3: Medium (yellow)\n"
+                    "- Priority 4: High (orange), Priority 5: Highest (red)\n"
+                    "- Use update_task with priority parameter to change priority\n"
+                    "\n"
+                    "REMEMBER: Always USE the tools, don't just talk about using them!"
                 )
             })
 
@@ -374,27 +381,54 @@ class ChatService:
                 # Execute each tool and add results to messages
                 for tool_call in assistant_message.tool_calls:
                     tool_name = tool_call.function.name
-                    tool_args = eval(tool_call.function.arguments)  # Parse JSON arguments
+                    try:
+                        import json
+                        tool_args = json.loads(tool_call.function.arguments)  # Parse JSON arguments safely
+                    except json.JSONDecodeError as e:
+                        logger.error(f"Failed to parse tool arguments: {e}")
+                        tool_result = {"error": f"Invalid JSON arguments: {str(e)}"}
+                        messages.append({
+                            "role": "tool",
+                            "tool_call_id": tool_call.id,
+                            "content": str(tool_result)
+                        })
+                        continue
 
                     # Add user_id to tool arguments
                     tool_args["user_id"] = user_id
 
                     # Execute MCP tool
                     if tool_name in self.mcp_tools:
-                        tool_result = await self.mcp_tools[tool_name](**tool_args)
-                        tool_calls_made.append({
-                            "tool": tool_name,
-                            "parameters": tool_args,
-                            "result": tool_result
-                        })
+                        try:
+                            tool_result = await self.mcp_tools[tool_name](**tool_args)
+                            logger.info(f"Tool {tool_name} executed successfully with args: {tool_args}, result: {tool_result}")
+                            tool_calls_made.append({
+                                "tool": tool_name,
+                                "parameters": tool_args,
+                                "result": tool_result
+                            })
 
-                        # Add tool result to messages
+                            # Add tool result to messages
+                            messages.append({
+                                "role": "tool",
+                                "tool_call_id": tool_call.id,
+                                "content": str(tool_result)
+                            })
+                        except Exception as e:
+                            logger.error(f"Tool {tool_name} execution failed: {str(e)}", exc_info=True)
+                            tool_result = {"error": f"Tool execution failed: {str(e)}"}
+                            messages.append({
+                                "role": "tool",
+                                "tool_call_id": tool_call.id,
+                                "content": str(tool_result)
+                            })
+                    else:
+                        logger.warning(f"Tool {tool_name} not found in MCP tools")
                         messages.append({
                             "role": "tool",
                             "tool_call_id": tool_call.id,
-                            "content": str(tool_result)
+                            "content": json.dumps({"error": f"Tool {tool_name} not found"})
                         })
-                        logger.info(f"Tool {tool_name} executed, result added to messages")
 
                 # Call OpenAI again to generate natural response based on tool results
                 logger.info("Calling OpenAI to generate natural response from tool results")
