@@ -346,20 +346,33 @@ class ChatService:
                 }
             ]
 
-            # Call OpenAI API with function calling
-            response = await self.openai_client.chat.completions.create(
-                model=self.model,
-                messages=messages,
-                tools=tools,
-                tool_choice="auto"
-            )
+            # Call OpenAI API with function calling - Loop until no more tool calls
+            max_iterations = 5  # Prevent infinite loops
+            iteration = 0
 
-            assistant_message = response.choices[0].message
-            tool_calls_made = []
+            while iteration < max_iterations:
+                iteration += 1
+                logger.info(f"OpenAI API call iteration {iteration}")
 
-            # Handle tool calls if any
-            if assistant_message.tool_calls:
-                logger.info(f"Processing {len(assistant_message.tool_calls)} tool calls")
+                response = await self.openai_client.chat.completions.create(
+                    model=self.model,
+                    messages=messages,
+                    tools=tools,
+                    tool_choice="auto"
+                )
+
+                assistant_message = response.choices[0].message
+
+                # If no tool calls, we're done - return the response
+                if not assistant_message.tool_calls:
+                    logger.info(f"No tool calls in iteration {iteration}, returning response")
+                    return {
+                        "response": assistant_message.content or "I'm here to help! What would you like to do?",
+                        "tool_calls": tool_calls_made
+                    }
+
+                # Process tool calls
+                logger.info(f"Processing {len(assistant_message.tool_calls)} tool calls in iteration {iteration}")
 
                 # Add assistant message with tool calls to conversation
                 messages.append({
@@ -430,21 +443,17 @@ class ChatService:
                             "content": json.dumps({"error": f"Tool {tool_name} not found"})
                         })
 
-                # Call OpenAI again to generate natural response based on tool results
-                logger.info("Calling OpenAI to generate natural response from tool results")
-                final_response = await self.openai_client.chat.completions.create(
-                    model=self.model,
-                    messages=messages
-                )
-                logger.info(f"Natural response generated: {final_response.choices[0].message.content[:100]}...")
+                # Loop continues - OpenAI will be called again with tool results
 
-                return {
-                    "response": final_response.choices[0].message.content or "Task operation completed.",
-                    "tool_calls": tool_calls_made
-                }
+            # If we hit max iterations, return what we have
+            logger.warning(f"Hit max iterations ({max_iterations}), returning final response")
+            final_response = await self.openai_client.chat.completions.create(
+                model=self.model,
+                messages=messages
+            )
 
             return {
-                "response": assistant_message.content or "I'm here to help! What would you like to do?",
+                "response": final_response.choices[0].message.content or "Task operations completed.",
                 "tool_calls": tool_calls_made
             }
 
