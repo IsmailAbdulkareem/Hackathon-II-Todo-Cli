@@ -347,6 +347,7 @@ class ChatService:
             ]
 
             # Call OpenAI API with function calling - Loop until no more tool calls
+            tool_calls_made = []  # Initialize before loop
             max_iterations = 5  # Prevent infinite loops
             iteration = 0
 
