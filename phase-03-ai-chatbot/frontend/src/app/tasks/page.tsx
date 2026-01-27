@@ -112,26 +112,19 @@ export default function Home() {
         <header className="space-y-4 animate-in fade-in slide-in-from-top duration-700">
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
             <div className="flex items-center gap-4">
-              <div className="p-3 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl shadow-lg shadow-blue-500/50 dark:shadow-blue-500/30 transform hover:scale-110 transition-transform duration-300">
-                <Layout className="w-7 h-7 text-white" />
-              </div>
-
-
-                <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer">
-            <div className="p-2 bg-gradient-to-br from-blue-600 to-purple-600 rounded-xl shadow-lg">
-              <Layout className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                Task Manager
-              </h1>
-              <p className="text-xs text-gray-600 dark:text-gray-400">
-                Organize your life, one task at a time
-              </p>
-            </div>
-          </Link>
-
-
+              <Link href="/" className="flex items-center gap-3 hover:opacity-80 transition-opacity cursor-pointer">
+                <div className="p-3 bg-gradient-to-br from-blue-600 to-purple-600 rounded-2xl shadow-lg shadow-blue-500/50 dark:shadow-blue-500/30 transform hover:scale-110 transition-transform duration-300">
+                  <Layout className="w-7 h-7 text-white" />
+                </div>
+                <div>
+                  <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                    Task Manager
+                  </h1>
+                  <p className="text-xs text-gray-600 dark:text-gray-400">
+                    Organize your life, one task at a time
+                  </p>
+                </div>
+              </Link>
             </div>
 
             <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-end">
