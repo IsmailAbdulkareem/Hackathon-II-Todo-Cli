@@ -1,0 +1,43 @@
+# Default values for todo-chatbot
+
+frontend:
+  image:
+    repository: todo-frontend
+    tag: latest
+    pullPolicy: Never  # Use local Minikube images
+  replicas: 1
+  service:
+    type: NodePort
+    port: 3000
+    nodePort: 30080
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+backend:
+  image:
+    repository: todo-backend
+    tag: latest
+    pullPolicy: Never  # Use local Minikube images
+  replicas: 1
+  service:
+    type: ClusterIP
+    port: 7860
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "250m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+  env:
+    - name: DATABASE_URL
+      value: "sqlite:///./todo.db"
+    - name: BETTER_AUTH_SECRET
+      value: "dev-secret-key-for-local-k8s-testing-only"
+    - name: OPENAI_API_KEY
+      value: "sk-dummy-key-for-local-testing"

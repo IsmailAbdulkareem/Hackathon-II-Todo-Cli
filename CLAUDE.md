@@ -216,6 +216,8 @@ See `.specify/memory/constitution.md` for code quality, testing, performance, se
 - In-memory (Python dict, no persistence) (002-todo-cli)
 - TypeScript / Node.js 20+ + Next.js 16+, React 19, Tailwind CSS, Framer Motion, Lucide React (001-frontend-ui)
 - Local State (browser session) (001-frontend-ui)
+- YAML (Kubernetes manifests), Helm Chart v3+, Dockerfile syntax + Minikube (local K8s), kubectl CLI, Helm 3+, Docker Desktop 4.53+ (001-k8s-local-deployment)
+- N/A (deployment infrastructure; application storage handled by existing apps) (001-k8s-local-deployment)
 
 ## Recent Changes
 - 001-env-setup: Added Python 3.13 or higher + None (uv for environment management only)
