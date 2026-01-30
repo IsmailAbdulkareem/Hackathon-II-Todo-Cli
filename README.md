@@ -7,9 +7,9 @@ A 5-phase development project demonstrating Spec-Driven Development (SDD) princi
 | Phase | Description | Tech Stack | Points | Due Date | Status |
 |-------|-------------|------------|--------|----------|--------|
 | Phase I | In-Memory Python Console App | Python 3.13+, Claude Code, Spec-Kit Plus | 100 | Dec 7, 2025 | ✅ Complete |
-| Phase II | Full-Stack Web Application | Next.js, FastAPI, SQLModel, Neon DB | 150 | Dec 14, 2025 | ⏳ In Progress |
-| Phase III | AI-Powered Todo Chatbot | OpenAI ChatKit, Agents SDK, MCP SDK | 200 | Dec 21, 2025 | 🔜 Pending |
-| Phase IV | Local Kubernetes Deployment | Docker, Minikube, Helm, kubectl-ai, kagent | 250 | Jan 4, 2026 | 🔜 Pending |
+| Phase II | Full-Stack Web Application | Next.js, FastAPI, SQLModel, Neon DB | 150 | Dec 14, 2025 | ✅ Complete |
+| Phase III | AI-Powered Todo Chatbot | OpenAI ChatKit, Agents SDK, MCP SDK | 200 | Dec 21, 2025 | ✅ Complete |
+| Phase IV | Local Kubernetes Deployment | Docker, Minikube, Helm, kubectl-ai, Docker AI | 250 | Jan 4, 2026 | ✅ Complete |
 | Phase V | Advanced Cloud Deployment | Kafka, Dapr, DigitalOcean DOKS | 300 | Jan 18, 2026 | 🔜 Pending |
 
 ## Directory Structure
@@ -77,6 +77,70 @@ The Next.js frontend in `phase-02-fullstack-web/frontend/` can be deployed to Ve
   "installCommand": "cd phase-02-fullstack-web/frontend && npm install"
 }
 ```
+
+### Phase III - AI Chatbot
+
+**Frontend (Next.js with AI Chat):**
+```bash
+cd phase-03-ai-chatbot/frontend
+npm install
+npm run dev
+```
+
+**Backend (FastAPI with OpenAI):**
+```bash
+cd phase-03-ai-chatbot/backend
+uvicorn main:app --reload --port 7860
+```
+
+### Phase IV - Kubernetes Deployment
+
+**Prerequisites:**
+- Docker Desktop installed and running
+- Minikube installed
+- Helm 3+ installed
+- kubectl installed
+
+**Deploy to Local Kubernetes:**
+
+```bash
+# Start Minikube cluster
+minikube start --cpus=2 --memory=3072 --driver=docker
+
+# Configure Docker to use Minikube's registry
+eval $(minikube docker-env)
+
+# Build images inside Minikube
+docker build -t todo-frontend:latest -f phase-04-k8s-local/k8s/dockerfiles/frontend.Dockerfile ./phase-03-ai-chatbot/frontend
+docker build -t todo-backend:latest -f phase-04-k8s-local/k8s/dockerfiles/backend.Dockerfile ./phase-03-ai-chatbot/backend
+
+# Deploy with Helm
+helm install todo-chatbot ./phase-04-k8s-local/k8s/helm/todo-chatbot
+
+# Access the application
+minikube service todo-frontend  # Opens in browser
+minikube service todo-backend --url  # Get backend URL
+```
+
+**Verify Deployment:**
+```bash
+# Check pods
+kubectl get pods
+
+# Check services
+kubectl get services
+
+# View logs
+kubectl logs deployment/todo-frontend
+kubectl logs deployment/todo-backend
+```
+
+**AI DevOps Tools Used:**
+- ✅ **Docker AI (Gordon)**: Generated production-ready Dockerfiles
+- ✅ **kubectl-ai**: Installed and functional (requires OpenAI API key)
+- ❌ **kagent**: Unavailable (documented)
+
+See [phase-04-k8s-local/docs/](phase-04-k8s-local/docs/) for complete documentation.
 
 ## Spec-Driven Development (SDD) Workflow
 
