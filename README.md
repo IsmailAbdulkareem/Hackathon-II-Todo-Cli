@@ -25,7 +25,25 @@ A 5-phase development project demonstrating Spec-Driven Development (SDD) princi
 │   ├── frontend/                   # Next.js app (Vercel deployable)
 │   └── backend/                    # FastAPI API
 ├── phase-03-ai-chatbot/            # Phase III: AI chatbot integration
-├── phase-04-k8s-local/             # Phase IV: Docker + K8s manifests
+│   ├── frontend/                   # Next.js with AI chat
+│   └── backend/                    # FastAPI with OpenAI
+├── phase-04-k8s-local/             # Phase IV: Kubernetes deployment
+│   ├── k8s/
+│   │   ├── dockerfiles/            # AI-generated Dockerfiles
+│   │   │   ├── frontend.Dockerfile # Multi-stage Next.js
+│   │   │   └── backend.Dockerfile  # Multi-stage Python
+│   │   ├── helm/
+│   │   │   └── todo-chatbot/       # Helm chart
+│   │   │       ├── Chart.yaml
+│   │   │       ├── values.yaml
+│   │   │       └── templates/      # K8s manifests
+│   │   └── README.md
+│   ├── docs/                       # Complete documentation
+│   │   ├── ai-devops-tools.md      # AI tools usage
+│   │   ├── k8s-setup.md            # Cluster setup
+│   │   ├── TESTING-GUIDE.md        # Testing checklist
+│   │   └── ...                     # 6 more docs
+│   └── scripts/                    # Automation scripts (empty)
 ├── phase-05-cloud-deploy/          # Phase V: Kafka + Dapr + cloud K8s
 ├── .specify/                       # Spec-Kit Plus templates
 ├── .claude/                        # Claude Code settings
