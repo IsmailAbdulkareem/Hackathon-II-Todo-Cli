@@ -69,7 +69,7 @@ minikube addons enable metrics-server
 
 ```bash
 # Build backend image
-cd ../phase-02-fullstack-web/backend
+cd ../phase-03-ai-chatbot/backend
 docker build -t todo-backend:local .
 
 # Build frontend image
