@@ -1,0 +1,13 @@
+Defaulting to user installation because normal site-packages is not writeable
+Requirement already satisfied: pytest in c:\users\ismai\appdata\roaming\python\python313\site-packages (9.0.2)
+Requirement already satisfied: httpx in c:\users\ismai\appdata\roaming\python\python313\site-packages (0.28.1)
+Requirement already satisfied: colorama>=0.4 in c:\users\ismai\appdata\roaming\python\python313\site-packages (from pytest) (0.4.6)
+Requirement already satisfied: iniconfig>=1.0.1 in c:\users\ismai\appdata\roaming\python\python313\site-packages (from pytest) (2.3.0)
+Requirement already satisfied: packaging>=22 in c:\users\ismai\appdata\roaming\python\python313\site-packages (from pytest) (25.0)
+Requirement already satisfied: pluggy<2,>=1.5 in c:\users\ismai\appdata\roaming\python\python313\site-packages (from pytest) (1.6.0)
+Requirement already satisfied: pygments>=2.7.2 in c:\users\ismai\appdata\roaming\python\python313\site-packages (from pytest) (2.19.2)
+Requirement already satisfied: anyio in c:\users\ismai\appdata\roaming\python\python313\site-packages (from httpx) (4.12.0)
+Requirement already satisfied: certifi in c:\users\ismai\appdata\roaming\python\python313\site-packages (from httpx) (2025.11.12)
+Requirement already satisfied: httpcore==1.* in c:\users\ismai\appdata\roaming\python\python313\site-packages (from httpx) (1.0.9)
+Requirement already satisfied: idna in c:\users\ismai\appdata\roaming\python\python313\site-packages (from httpx) (3.11)
+Requirement already satisfied: h11>=0.16 in c:\users\ismai\appdata\roaming\python\python313\site-packages (from httpcore==1.*->httpx) (0.16.0)

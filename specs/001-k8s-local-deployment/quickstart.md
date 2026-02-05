@@ -1,481 +1,487 @@
-# Quickstart: Local Kubernetes Deployment for Todo Chatbot
+# Quickstart: Local Kubernetes Deployment
 
-**Feature**: 001-k8s-local-deployment
-**Date**: 2026-01-28
-**Purpose**: Step-by-step guide for deploying Todo Chatbot to local Kubernetes cluster
+**Date**: 2026-01-31
+**Purpose**: 12-step deployment workflow for Todo Chatbot on local Kubernetes (Minikube)
+**Target Time**: < 15 minutes from prerequisites to running application
+
+---
 
 ## Prerequisites
 
-### Required Tools
+Before starting, ensure you have:
 
-1. **Docker Desktop 4.53+**
-   - Download: https://www.docker.com/products/docker-desktop
-   - Verify: `docker --version`
+- ✅ Docker Desktop 4.53+ or Docker Engine installed and running
+- ✅ Minikube v1.37+ installed
+- ✅ kubectl v1.35+ installed
+- ✅ Helm v4+ installed
+- ✅ Phase III applications (frontend + backend) available in `phase-04-k8s-local/`
+- ✅ Neon PostgreSQL database connection string
+- ✅ Anthropic API key for AI chat functionality
 
-2. **Minikube**
-   - Install: https://minikube.sigs.k8s.io/docs/start/
-   - Verify: `minikube version`
+**Verify Prerequisites**:
+```bash
+docker --version
+minikube version
+kubectl version --client
+helm version
+```
 
-3. **kubectl**
-   - Usually included with Docker Desktop or Minikube
-   - Verify: `kubectl version --client`
+---
 
-4. **Helm 3+**
-   - Install: https://helm.sh/docs/intro/install/
-   - Verify: `helm version`
+## Deployment Workflow
 
-### AI DevOps Tools (Attempt Installation)
+### Step 1: Build Docker Images
 
-5. **Docker AI (Gordon)** - Optional but recommended
-   - Included in Docker Desktop with subscription
-   - Verify: `docker ai --help`
-   - If unavailable: Document error and use Claude Code fallback
-
-6. **kubectl-ai** - Optional but recommended
-   - Install krew: https://krew.sigs.k8s.io/docs/user-guide/setup/install/
-   - Install plugin: `kubectl krew install ai`
-   - Verify: `kubectl ai --help`
-   - If unavailable: Document error and use standard kubectl
-
-7. **kagent** - Optional, minimal demonstration
-   - Research installation method (may require API keys)
-   - Document setup process and any blockers
-   - If unavailable: Document attempt and use kubectl-ai or standard tools
-
-### System Requirements
-
-- **RAM**: Minimum 4GB available (8GB recommended)
-- **CPU**: Minimum 2 cores available
-- **Disk**: 20GB free space
-- **OS**: Windows 10+, macOS 10.15+, or Linux
-
-## Step 1: Start Minikube Cluster
-
-### 1.1 Start Cluster with Resource Allocation
+Build both frontend and backend Docker images locally.
 
 ```bash
-# Start Minikube with appropriate resources
-minikube start --cpus=2 --memory=3072 --driver=docker
-
-# Expected output:
-# 😄  minikube v1.x.x on [Your OS]
-# ✨  Using the docker driver based on user configuration
-# 🎉  minikube 1.x.x is available! Download it: https://github.com/kubernetes/minikube/releases/tag/v1.x.x
-# 💿  Downloading Kubernetes v1.x.x preload ...
-# 🔥  Creating docker container (CPUs=2, Memory=3072MB) ...
-# 🐳  Preparing Kubernetes v1.x.x on Docker 24.x.x ...
-# 🔎  Verifying Kubernetes components...
-# 🌟  Enabled addons: storage-provisioner, default-storageclass
-# 🏄  Done! kubectl is now configured to use "minikube" cluster and "default" namespace by default
-```
-
-### 1.2 Verify Cluster Health
-
-**Using kubectl-ai (if available):**
-```bash
-kubectl ai "show me cluster information and verify all nodes are ready"
-```
-
-**Using standard kubectl (fallback):**
-```bash
-# Check cluster info
-kubectl cluster-info
-
-# Check node status
-kubectl get nodes
-
-# Expected output:
-# NAME       STATUS   ROLES           AGE   VERSION
-# minikube   Ready    control-plane   1m    v1.x.x
-
-# Check system pods
-kubectl get pods -n kube-system
-```
-
-### 1.3 Configure Docker Environment
-
-```bash
-# Point your shell to Minikube's Docker daemon
-# This allows images built locally to be used directly by Minikube
-eval $(minikube docker-env)
-
-# Verify Docker is pointing to Minikube
-docker ps
-# You should see Minikube's Kubernetes containers
-```
-
-**Note**: Run `eval $(minikube docker-env)` in each new terminal session where you build images.
-
-## Step 2: Build Container Images
-
-### 2.1 Create Dockerfiles with AI Assistance
-
-**Using Docker AI (Gordon) - Attempt First:**
-
-```bash
-# Navigate to frontend directory
-cd phase-02-fullstack-web/frontend  # Adjust path as needed
-
-# Use Docker AI to generate Dockerfile
-docker ai "Create an optimized production Dockerfile for a Next.js application"
-
-# Review and save the generated Dockerfile
-# Document the AI-generated content and any modifications made
-```
-
-**Using Claude Code (Fallback):**
-
-If Docker AI is unavailable, use Claude Code to generate Dockerfiles with explanations:
-
-**Frontend Dockerfile** (k8s/dockerfiles/frontend.Dockerfile):
-```dockerfile
-# Multi-stage build for Next.js application
-FROM node:20-alpine AS builder
-
-WORKDIR /app
-
-# Copy package files
-COPY package*.json ./
-
-# Install dependencies
-RUN npm ci --only=production
-
-# Copy application code
-COPY . .
-
-# Build Next.js application
-RUN npm run build
-
-# Production stage
-FROM node:20-alpine AS runner
-
-WORKDIR /app
-
-# Set environment to production
-ENV NODE_ENV=production
-
-# Copy built application from builder
-COPY --from=builder /app/.next ./.next
-COPY --from=builder /app/node_modules ./node_modules
-COPY --from=builder /app/package.json ./package.json
-COPY --from=builder /app/public ./public
-
-# Expose port
-EXPOSE 3000
-
-# Start application
-CMD ["npm", "start"]
-```
-
-**Backend Dockerfile** (k8s/dockerfiles/backend.Dockerfile):
-```dockerfile
-# Python backend Dockerfile
-FROM python:3.13-slim
-
-WORKDIR /app
-
-# Copy requirements
-COPY requirements.txt .
-
-# Install dependencies
-RUN pip install --no-cache-dir -r requirements.txt
-
-# Copy application code
-COPY . .
-
-# Expose port
-EXPOSE 8000
-
-# Start application
-CMD ["python", "main.py"]  # Adjust based on actual backend entry point
-```
-
-**Documentation**: Create `docs/ai-devops-tools.md` documenting:
-- Which AI tool was used (Docker AI or Claude Code)
-- The prompts/instructions provided
-- The generated output
-- Any modifications made and why
-
-### 2.2 Build Images
-
-```bash
-# Ensure Docker is pointing to Minikube
-eval $(minikube docker-env)
+# Navigate to project root
+cd "D:\Projects\spec-driven-development-hacathon\Hackathon II - Todo Spec-Driven Development"
 
 # Build frontend image
-docker build -t todo-frontend:latest -f k8s/dockerfiles/frontend.Dockerfile ./phase-02-fullstack-web/frontend
+docker build -t todo-frontend:latest -f phase-04-k8s-local/frontend/Dockerfile phase-04-k8s-local/frontend
 
 # Build backend image
-docker build -t todo-backend:latest -f k8s/dockerfiles/backend.Dockerfile ./phase-02-fullstack-web/backend
+docker build -t todo-backend:latest -f phase-04-k8s-local/backend/Dockerfile phase-04-k8s-local/backend
 
-# Verify images are available
+# Verify images
 docker images | grep todo
 ```
 
-**Expected output:**
-```
-todo-frontend   latest   abc123def456   1 minute ago   150MB
-todo-backend    latest   def456ghi789   1 minute ago   200MB
-```
+**Expected Output**: Two images (todo-frontend:latest, todo-backend:latest) with sizes < 500MB and < 300MB respectively.
 
-## Step 3: Deploy with Helm
+**Time**: ~3-5 minutes
 
-### 3.1 Create Helm Chart Structure
+---
+
+### Step 2: Test Containers Locally
+
+Verify containers run correctly before Kubernetes deployment.
 
 ```bash
-# Create Helm chart directory
-mkdir -p k8s/helm/todo-chatbot/templates
+# Test backend (requires DATABASE_URL and ANTHROPIC_API_KEY)
+docker run -d --name test-backend \
+  -p 8000:8000 \
+  -e DATABASE_URL="your-neon-connection-string" \
+  -e ANTHROPIC_API_KEY="your-api-key" \
+  todo-backend:latest
 
-# Chart.yaml will be created in implementation phase
-# values.yaml will be created in implementation phase
-# Template files will be created in implementation phase
+# Check backend health
+curl http://localhost:8000/
+
+# Test frontend
+docker run -d --name test-frontend \
+  -p 3000:80 \
+  -e NEXT_PUBLIC_API_URL="http://localhost:8000" \
+  todo-frontend:latest
+
+# Check frontend health
+curl http://localhost:3000/
+
+# Cleanup test containers
+docker stop test-backend test-frontend
+docker rm test-backend test-frontend
 ```
 
-### 3.2 Install Helm Release
+**Expected Output**: Both health checks return 200 OK.
 
-**Using kubectl-ai for verification (if available):**
+**Time**: ~1 minute
+
+---
+
+### Step 3: Start Minikube Cluster
+
+Initialize local Kubernetes cluster with required resources.
+
 ```bash
-# Install the Helm chart
-helm install todo-chatbot ./k8s/helm/todo-chatbot
+# Start Minikube with 4 CPUs and 6GB memory
+minikube start --cpus=4 --memory=6144
 
-# Use kubectl-ai to verify deployment
-kubectl ai "show me all resources created by the todo-chatbot release"
+# Verify cluster is running
+kubectl get nodes
+
+# Check cluster info
+kubectl cluster-info
 ```
 
-**Using standard commands (fallback):**
-```bash
-# Install the Helm chart
-helm install todo-chatbot ./k8s/helm/todo-chatbot
+**Expected Output**: Minikube node shows "Ready" status.
 
-# Expected output:
-# NAME: todo-chatbot
-# LAST DEPLOYED: [timestamp]
-# NAMESPACE: default
-# STATUS: deployed
-# REVISION: 1
+**Time**: ~2-3 minutes
+
+---
+
+### Step 4: Load Images into Minikube
+
+Transfer Docker images to Minikube's internal registry.
+
+```bash
+# Load frontend image
+minikube image load todo-frontend:latest
+
+# Load backend image
+minikube image load todo-backend:latest
+
+# Verify images are available
+minikube image ls | grep todo
+```
+
+**Expected Output**: Both images listed in Minikube's image registry.
+
+**Time**: ~1 minute
+
+---
+
+### Step 5: Create Kubernetes Secrets
+
+Store sensitive credentials in Kubernetes Secrets.
+
+```bash
+# Create backend secrets (replace with actual values)
+kubectl create secret generic todo-backend-secrets \
+  --from-literal=DATABASE_URL="postgresql://user:password@host:port/database?sslmode=require" \
+  --from-literal=ANTHROPIC_API_KEY="sk-ant-..."
+
+# Verify secret creation
+kubectl get secrets
+kubectl describe secret todo-backend-secrets
+```
+
+**Expected Output**: Secret created with 2 data keys (DATABASE_URL, ANTHROPIC_API_KEY).
+
+**Security Note**: Secret values should NOT be visible in `kubectl describe` output.
+
+**Time**: ~30 seconds
+
+---
+
+### Step 6: Deploy Backend with Helm
+
+Deploy backend application using Helm chart.
+
+```bash
+# Navigate to Helm charts directory
+cd phase-04-k8s-local/k8s/helm
+
+# Install backend chart
+helm install todo-backend ./todo-backend
 
 # Verify deployment
-kubectl get all
+kubectl get pods -l app=todo-backend
+kubectl get svc todo-backend
 ```
 
-### 3.3 Wait for Pods to be Ready
+**Expected Output**: Backend pod reaches "Running" status within 2 minutes.
+
+**Time**: ~2 minutes
+
+---
+
+### Step 7: Deploy Frontend with Helm
+
+Deploy frontend application using Helm chart.
 
 ```bash
-# Watch pod status
-kubectl get pods -w
+# Install frontend chart
+helm install todo-frontend ./todo-frontend
 
-# Expected output (after ~1-2 minutes):
-# NAME                                READY   STATUS    RESTARTS   AGE
-# todo-frontend-xxxxxxxxxx-xxxxx      1/1     Running   0          1m
-# todo-backend-xxxxxxxxxx-xxxxx       1/1     Running   0          1m
-
-# Press Ctrl+C to stop watching
+# Verify deployment
+kubectl get pods -l app=todo-frontend
+kubectl get svc todo-frontend
 ```
 
-## Step 4: Access the Application
+**Expected Output**: Frontend pods (2 replicas) reach "Running" status within 2 minutes.
 
-### 4.1 Get Frontend URL
+**Time**: ~2 minutes
+
+---
+
+### Step 8: Verify Pod Health
+
+Ensure all pods are healthy and passing health checks.
 
 ```bash
-# Get the frontend service URL
+# Check all pods
+kubectl get pods
+
+# Check pod details
+kubectl describe pod -l app=todo-backend
+kubectl describe pod -l app=todo-frontend
+
+# Check pod logs
+kubectl logs -l app=todo-backend --tail=50
+kubectl logs -l app=todo-frontend --tail=50
+```
+
+**Expected Output**: All pods show "Ready" status with passing liveness/readiness probes.
+
+**Time**: ~1 minute
+
+---
+
+### Step 9: Verify Service Endpoints
+
+Confirm Kubernetes services are properly configured.
+
+```bash
+# Check services
+kubectl get svc
+
+# Check service endpoints
+kubectl get endpoints
+
+# Verify backend service (ClusterIP)
+kubectl describe svc todo-backend
+
+# Verify frontend service (NodePort)
+kubectl describe svc todo-frontend
+```
+
+**Expected Output**:
+- Backend service has ClusterIP with port 8000
+- Frontend service has NodePort with port 3000
+- Endpoints show pod IPs
+
+**Time**: ~30 seconds
+
+---
+
+### Step 10: Access Application
+
+Get frontend URL and access the application.
+
+```bash
+# Get frontend service URL
 minikube service todo-frontend --url
 
-# Expected output:
-# http://192.168.49.2:30080
+# Open in browser (or use curl)
+# Example: http://192.168.49.2:30080
 ```
 
-### 4.2 Open in Browser
+**Expected Output**: Frontend URL displayed. Opening in browser shows Todo Chatbot interface.
 
+**Time**: ~30 seconds
+
+---
+
+### Step 11: Test End-to-End Flow
+
+Validate complete user workflow through Kubernetes.
+
+**Manual Test**:
+1. Open frontend URL in browser
+2. Navigate to chat interface
+3. Send a test message (e.g., "Create a todo: Buy groceries")
+4. Verify AI response is received within 3 seconds
+5. Check that todo is created and visible
+
+**CLI Verification**:
 ```bash
-# Open the URL in your default browser
-minikube service todo-frontend
+# Check backend logs for request processing
+kubectl logs -l app=todo-backend --tail=20
 
-# Or manually open the URL from step 4.1 in your browser
+# Verify database connection
+kubectl logs -l app=todo-backend | grep -i database
+
+# Check frontend logs
+kubectl logs -l app=todo-frontend --tail=20
 ```
 
-### 4.3 Verify Frontend-Backend Communication
+**Expected Output**:
+- AI response received within 3 seconds
+- Backend logs show successful request processing
+- Database connection confirmed
 
-1. Open the application in your browser
-2. Try creating a todo item
-3. Verify the todo appears in the list
-4. Check backend logs to confirm API requests:
+**Time**: ~2 minutes
+
+---
+
+### Step 12: Verify Configuration
+
+Confirm ConfigMaps and Secrets are properly mounted.
 
 ```bash
+# Get frontend pod name
+FRONTEND_POD=$(kubectl get pods -l app=todo-frontend -o jsonpath='{.items[0].metadata.name}')
+
+# Verify frontend ConfigMap
+kubectl exec $FRONTEND_POD -- env | grep NEXT_PUBLIC_API_URL
+
 # Get backend pod name
-kubectl get pods | grep backend
+BACKEND_POD=$(kubectl get pods -l app=todo-backend -o jsonpath='{.items[0].metadata.name}')
 
-# View backend logs
-kubectl logs <backend-pod-name>
+# Verify backend Secret is mounted (should show secretKeyRef, not values)
+kubectl describe pod $BACKEND_POD | grep -A 5 "Environment:"
 ```
 
-## Step 5: Test Scaling (Optional)
+**Expected Output**:
+- Frontend shows `NEXT_PUBLIC_API_URL=http://todo-backend:8000`
+- Backend shows environment variables from secretKeyRef (not plaintext values)
 
-### 5.1 Scale Frontend
+**Time**: ~1 minute
 
-**Using kubectl-ai (if available):**
-```bash
-kubectl ai "scale the frontend deployment to 3 replicas"
-```
+---
 
-**Using standard kubectl (fallback):**
+## Deployment Complete! 🎉
+
+**Total Time**: ~12-15 minutes
+
+Your Todo Chatbot is now running on local Kubernetes with:
+- ✅ Frontend: 2 replicas, accessible via NodePort
+- ✅ Backend: 1 replica, internal ClusterIP service
+- ✅ Health monitoring with liveness/readiness probes
+- ✅ Secure secret management
+- ✅ Service discovery via Kubernetes DNS
+
+---
+
+## Common Operations
+
+### Scale Replicas
+
 ```bash
 # Scale frontend to 3 replicas
 kubectl scale deployment todo-frontend --replicas=3
 
+# Scale backend to 2 replicas
+kubectl scale deployment todo-backend --replicas=2
+
 # Verify scaling
-kubectl get pods | grep frontend
-
-# Expected output:
-# todo-frontend-xxxxxxxxxx-xxxxx   1/1     Running   0          5m
-# todo-frontend-xxxxxxxxxx-yyyyy   1/1     Running   0          10s
-# todo-frontend-xxxxxxxxxx-zzzzz   1/1     Running   0          10s
+kubectl get pods
 ```
 
-### 5.2 Verify Load Distribution
+### Update Configuration
 
 ```bash
-# Watch pod logs to see which pods handle requests
-kubectl logs -f deployment/todo-frontend
+# Edit frontend ConfigMap
+kubectl edit configmap todo-frontend
+
+# Restart frontend pods to pick up changes
+kubectl rollout restart deployment todo-frontend
+
+# Verify rollout
+kubectl rollout status deployment todo-frontend
 ```
 
-## Step 6: Demonstrate kagent (Minimal)
-
-### 6.1 Attempt kagent Setup
+### View Logs
 
 ```bash
-# Research and document kagent installation
-# This may require:
-# - API keys or cloud service setup
-# - Specific Kubernetes versions
-# - Additional dependencies
+# Stream backend logs
+kubectl logs -f -l app=todo-backend
 
-# Document the setup process in docs/ai-devops-tools.md
+# Stream frontend logs
+kubectl logs -f -l app=todo-frontend
+
+# View logs from all replicas
+kubectl logs -l app=todo-frontend --all-containers=true
 ```
 
-### 6.2 Minimal Demonstration
+### Check Resource Usage
 
-If kagent is available, demonstrate one operation:
 ```bash
-# Example: Use kagent for deployment health check
-kagent check deployment todo-frontend
+# View pod resource usage
+kubectl top pods
 
-# Or: Use kagent for resource optimization
-kagent optimize resources
+# View node resource usage
+kubectl top nodes
 ```
 
-If kagent is unavailable:
-```bash
-# Document the attempt in docs/ai-devops-tools.md:
-# - Installation steps attempted
-# - Error messages encountered
-# - Reason for unavailability (region, tier, platform)
-# - Fallback approach used
-```
+---
 
-## Step 7: Cleanup
+## Cleanup
 
-### 7.1 Uninstall Helm Release
+When you're done testing, clean up all resources.
 
 ```bash
-# Uninstall the Helm release
-helm uninstall todo-chatbot
+# Uninstall Helm releases
+helm uninstall todo-frontend
+helm uninstall todo-backend
 
-# Verify resources are removed
+# Delete secrets
+kubectl delete secret todo-backend-secrets
+
+# Verify cleanup
 kubectl get all
-```
 
-### 7.2 Stop Minikube
-
-```bash
-# Stop the Minikube cluster
+# Stop Minikube
 minikube stop
 
-# Optional: Delete the cluster entirely
+# (Optional) Delete Minikube cluster
 minikube delete
 ```
+
+**Time**: ~1 minute
+
+---
 
 ## Troubleshooting
 
 ### Pods Not Starting
 
 ```bash
-# Check pod status
+# Check pod events
 kubectl describe pod <pod-name>
 
 # Check pod logs
 kubectl logs <pod-name>
 
-# Common issues:
-# - Image pull errors: Verify imagePullPolicy is set to Never
-# - Resource constraints: Check if cluster has sufficient resources
-# - Application errors: Check logs for startup issues
+# Check image pull status
+kubectl get events --sort-by='.lastTimestamp'
 ```
 
 ### Service Not Accessible
 
 ```bash
-# Verify service exists
-kubectl get services
-
-# Check service endpoints
+# Verify service endpoints
 kubectl get endpoints
 
-# Verify Minikube tunnel (if using LoadBalancer)
-minikube tunnel
+# Check service configuration
+kubectl describe svc <service-name>
 
-# Check NodePort assignment
-kubectl describe service todo-frontend
+# Test service from within cluster
+kubectl run test-pod --image=curlimages/curl --rm -it -- curl http://todo-backend:8000/
 ```
 
-### Docker Environment Issues
+### Configuration Issues
 
 ```bash
-# Reset Docker environment
-eval $(minikube docker-env -u)
+# Verify ConfigMap
+kubectl get configmap todo-frontend -o yaml
 
-# Re-configure for Minikube
-eval $(minikube docker-env)
+# Verify Secret exists (values should be base64 encoded)
+kubectl get secret todo-backend-secrets -o yaml
 
-# Rebuild images if needed
+# Check environment variables in pod
+kubectl exec <pod-name> -- env
 ```
 
-### Resource Constraints
+### Image Not Found
 
 ```bash
-# Check cluster resource usage
-kubectl top nodes
-kubectl top pods
+# Verify images in Minikube
+minikube image ls | grep todo
 
-# Increase Minikube resources (requires restart)
-minikube stop
-minikube start --cpus=4 --memory=4096
+# Reload images if needed
+minikube image load todo-frontend:latest
+minikube image load todo-backend:latest
 ```
 
-## Success Criteria Verification
-
-- [ ] SC-001: Cluster setup completed in under 10 minutes
-- [ ] SC-002: Container images built successfully with AI assistance (or documented fallback)
-- [ ] SC-003: Helm deployment completed and all services running within 5 minutes
-- [ ] SC-004: Application accessible via local URL and responds to requests
-- [ ] SC-005: Services scaled successfully within 2 minutes
-- [ ] SC-006: Deployment steps repeatable with identical results
-- [ ] SC-007: Logs and diagnostics accessible for troubleshooting
-- [ ] SC-008: Zero-cost deployment (no cloud resources used)
-- [ ] SC-009: AI DevOps tool usage demonstrated with documented attempts and outcomes
+---
 
 ## Next Steps
 
-After successful deployment:
-1. Document AI DevOps tool usage in `docs/ai-devops-tools.md`
-2. Create deployment automation scripts (optional)
-3. Prepare for Phase V: Production cloud deployment
-4. Review and refine Helm chart configurations
-5. Consider adding monitoring and observability tools
+- **AI Operations**: Explore kubectl-ai and kagent for natural language cluster management
+- **Monitoring**: Set up Prometheus and Grafana for metrics
+- **Logging**: Configure centralized logging with EFK stack
+- **Production**: Migrate to cloud Kubernetes (EKS, GKE, AKS) for production deployment
+
+---
 
 ## References
 
-- Minikube Documentation: https://minikube.sigs.k8s.io/docs/
-- Kubernetes Documentation: https://kubernetes.io/docs/
-- Helm Documentation: https://helm.sh/docs/
-- Docker Documentation: https://docs.docker.com/
-- kubectl-ai: https://github.com/sozercan/kubectl-ai
+- [Kubernetes Documentation](https://kubernetes.io/docs/)
+- [Helm Documentation](https://helm.sh/docs/)
+- [Minikube Documentation](https://minikube.sigs.k8s.io/docs/)
+- [Docker Documentation](https://docs.docker.com/)
+- Project Spec: [spec.md](./spec.md)
+- Implementation Plan: [plan.md](./plan.md)
+- Helm Chart Structure: [contracts/helm-chart-structure.md](./contracts/helm-chart-structure.md)

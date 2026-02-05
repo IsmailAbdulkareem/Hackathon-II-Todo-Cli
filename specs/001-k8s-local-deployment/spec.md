@@ -1,229 +1,215 @@
-# Feature Specification: Local Kubernetes Deployment for Todo Chatbot
+# Feature Specification: Local Kubernetes Deployment
 
 **Feature Branch**: `001-k8s-local-deployment`
-**Created**: 2026-01-28
+**Created**: 2026-01-31
 **Status**: Draft
-**Input**: User description: "Phase IV: Local Kubernetes Deployment - Deploy Todo Chatbot on local Kubernetes cluster using Minikube, Docker, Helm Charts, and AI-powered DevOps tools"
+**Input**: User description: "Deploy the existing Phase III Todo Chatbot (frontend + backend) on a local Kubernetes cluster using Minikube, Docker, and Helm Charts, with AI-assisted DevOps tools. All infrastructure work MUST be performed via Claude Code prompts, Docker AI (Gordon), kubectl-ai, and kagent. Manual YAML or Dockerfile writing is not allowed."
+
+## Clarifications
+
+### Session 2026-01-31
+
+- Q: What resource limits should be set for the frontend and backend pods? → A: Frontend: 250m CPU / 512Mi memory, Backend: 500m CPU / 1Gi memory (balanced for local development)
+- Q: What CPU and memory resources should be allocated to the Minikube cluster? → A: 4 CPUs, 6GB memory (balanced allocation for local development)
+- Q: What health probe configuration should be used for the frontend and backend pods? → A: Both use /health endpoint, liveness: 30s initial/10s period/3 failures, readiness: 5s initial/5s period/3 failures (balanced timing)
+- Q: What should be the initial replica count for frontend and backend deployments? → A: Frontend: 2 replicas, Backend: 1 replica (frontend redundancy, backend minimal)
+- Q: How should the frontend discover and connect to the backend service within the Kubernetes cluster? → A: Environment variable: NEXT_PUBLIC_API_URL, Value: http://todo-backend:8000 (short service name with Kubernetes DNS)
 
 ## User Scenarios & Testing *(mandatory)*
 
-### User Story 1 - Local Kubernetes Environment Setup (Priority: P1)
+### User Story 1 - Application Containerization (Priority: P1)
 
-As a developer, I need to set up a local Kubernetes cluster so that I can deploy and test the Todo Chatbot application in a cloud-native environment without incurring cloud costs.
+As a developer, I want AI agents to generate production-ready Dockerfiles and build container images so that the Phase III applications can run in a containerized environment and be deployed to Kubernetes.
 
-**Why this priority**: This is the foundational requirement - without a working local Kubernetes cluster, no deployment or testing can occur. This represents the minimum viable infrastructure.
+**Why this priority**: Containerization is the foundational requirement for Kubernetes deployment. Without container images, no deployment can occur. This is the critical first step that unblocks all subsequent work.
 
-**Independent Test**: Can be fully tested by starting the local cluster and verifying cluster health status, delivering a ready-to-use Kubernetes environment.
+**Independent Test**: Can be fully tested by building Docker images locally and running containers with `docker run`, verifying that both frontend and backend applications start successfully and respond to health checks without requiring Kubernetes.
 
 **Acceptance Scenarios**:
 
-1. **Given** required tools are installed, **When** developer starts the local Kubernetes cluster, **Then** cluster status shows as running and healthy
-2. **Given** cluster is running, **When** developer checks cluster nodes, **Then** at least one node is available and ready
-3. **Given** cluster is running, **When** developer queries cluster version, **Then** cluster responds with version information
+1. **Given** the Phase III frontend application code exists in `phase-04-k8s-local/frontend/`, **When** Claude Code uses Docker AI to generate a Dockerfile, **Then** a multi-stage Dockerfile is created that produces a runnable container image
+2. **Given** the Phase III backend application code exists in `phase-04-k8s-local/backend/`, **When** Claude Code uses Docker AI to generate a Dockerfile, **Then** a multi-stage Dockerfile is created that produces a runnable container image
+3. **Given** Dockerfiles have been generated, **When** Docker builds the images, **Then** both images build successfully without errors in under 5 minutes
+4. **Given** Docker images are built, **When** containers are started locally with `docker run`, **Then** both applications start and respond to health check endpoints
+5. **Given** containers are running, **When** environment variables are provided for database connection, **Then** backend connects to the external Neon PostgreSQL database successfully
 
 ---
 
-### User Story 2 - Application Containerization (Priority: P2)
+### User Story 2 - Local Kubernetes Cluster Setup (Priority: P2)
 
-As a developer, I need to containerize the frontend and backend applications so that they can be deployed to Kubernetes as portable, isolated units.
+As a developer, I want a local Kubernetes cluster running on Minikube so that I can deploy and test the containerized applications in a Kubernetes environment without cloud costs.
 
-**Why this priority**: Containerization is a prerequisite for Kubernetes deployment. Without container images, there's nothing to deploy to the cluster.
+**Why this priority**: A functioning Kubernetes cluster is required before any deployment can occur. This is the second critical step that provides the deployment target for the containerized applications.
 
-**Independent Test**: Can be fully tested by building container images and verifying they run locally, delivering deployable application artifacts.
+**Independent Test**: Can be fully tested by starting Minikube, verifying cluster health with `kubectl get nodes`, and confirming that the cluster can schedule and run a simple test pod (e.g., nginx) successfully.
 
 **Acceptance Scenarios**:
 
-1. **Given** application source code exists, **When** developer uses Docker AI (Gordon) or AI-assisted tooling to build frontend container, **Then** a valid container image is created with AI-generated or AI-optimized Dockerfile
-2. **Given** application source code exists, **When** developer uses Docker AI (Gordon) or AI-assisted tooling to build backend container, **Then** a valid container image is created with AI-generated or AI-optimized Dockerfile
-3. **Given** container images are built, **When** developer lists available images, **Then** both frontend and backend images appear in the registry
-4. **Given** container images exist, **When** developer runs a container locally, **Then** the application starts successfully
-5. **Given** AI tools are unavailable, **When** developer attempts to use them, **Then** the attempt is documented and a fallback approach is used
+1. **Given** Minikube is installed on the development machine, **When** Claude Code executes `minikube start` with 4 CPUs and 6GB memory allocated, **Then** the local Kubernetes cluster starts successfully
+2. **Given** Minikube is running, **When** `kubectl get nodes` is executed, **Then** at least one node shows status "Ready"
+3. **Given** the cluster is healthy, **When** `kubectl cluster-info` is executed, **Then** cluster information displays showing Kubernetes control plane is running
+4. **Given** the cluster is operational, **When** a test pod is deployed, **Then** the pod reaches "Running" status within 1 minute
 
 ---
 
-### User Story 3 - Kubernetes Deployment via Helm (Priority: P3)
+### User Story 3 - Helm-Based Deployment (Priority: P3)
 
-As a developer, I need to deploy the containerized applications to Kubernetes using Helm charts so that I can manage the deployment configuration declaratively and repeatably.
+As a developer, I want AI-generated Helm charts to deploy the frontend and backend applications so that I can manage Kubernetes resources declaratively and enable repeatable deployments.
 
-**Why this priority**: This is the core deployment capability that brings together containerization and orchestration, delivering a running application in Kubernetes.
+**Why this priority**: Helm charts provide the deployment mechanism that brings together the container images and Kubernetes cluster. This is the core deployment functionality that delivers the primary value of running the application on Kubernetes.
 
-**Independent Test**: Can be fully tested by deploying via Helm and verifying all pods are running, delivering a functional cloud-native deployment.
+**Independent Test**: Can be fully tested by running `helm install` with the generated charts, verifying that all pods reach "Running" status, services are created, and the application is accessible through the frontend service endpoint.
 
 **Acceptance Scenarios**:
 
-1. **Given** Helm charts are created, **When** developer installs the Helm release using kubectl-ai or kagent assistance, **Then** deployment completes without errors
-2. **Given** Helm release is installed, **When** developer checks pod status using kubectl-ai or standard kubectl, **Then** all pods show as running and ready
-3. **Given** pods are running, **When** developer checks service endpoints, **Then** services are exposed and accessible
-4. **Given** deployment is complete, **When** developer accesses the application URL, **Then** the Todo Chatbot interface loads successfully
-5. **Given** AI tools (kubectl-ai, kagent) are used, **When** developer performs Kubernetes operations, **Then** AI assistance is documented in deployment logs or notes
+1. **Given** Docker images are built and available, **When** Claude Code uses kubectl-ai or kagent to generate Helm charts, **Then** Helm chart structures are created for both frontend and backend with Deployment, Service, and ConfigMap templates
+2. **Given** Helm charts are generated, **When** `helm install todo-frontend ./helm/frontend` is executed, **Then** the frontend deployment succeeds and pods reach "Running" status within 2 minutes
+3. **Given** Helm charts are generated, **When** `helm install todo-backend ./helm/backend` is executed, **Then** the backend deployment succeeds and pods reach "Running" status within 2 minutes
+4. **Given** both applications are deployed, **When** `kubectl get services` is executed, **Then** frontend service shows type NodePort or LoadBalancer and backend service shows type ClusterIP
+5. **Given** services are running, **When** `minikube service todo-frontend --url` is executed, **Then** a URL is returned that allows access to the frontend application
+6. **Given** the frontend is accessible, **When** a user opens the frontend URL in a browser, **Then** the Todo Chatbot interface loads successfully
+7. **Given** the application is running, **When** a user sends a chat message through the frontend, **Then** the backend processes the request and returns an AI-generated response
 
 ---
 
-### User Story 4 - Application Access and Verification (Priority: P4)
+### User Story 4 - AI-Assisted Operations (Priority: P4)
 
-As a developer, I need to access the deployed application through a local URL so that I can verify the deployment works correctly and test the application functionality.
+As a developer, I want to use kubectl-ai and kagent for natural language Kubernetes operations so that I can manage, scale, debug, and monitor the deployment efficiently without memorizing complex kubectl commands.
 
-**Why this priority**: This validates that the deployment is not just running but actually functional and accessible, completing the deployment workflow.
+**Why this priority**: AI-assisted operations enhance developer productivity and provide intelligent insights, but the application can function without them. This is an enhancement that improves the operational experience.
 
-**Independent Test**: Can be fully tested by accessing the application URL and performing basic operations, delivering end-to-end deployment verification.
-
-**Acceptance Scenarios**:
-
-1. **Given** application is deployed, **When** developer retrieves the service URL, **Then** a valid local URL is provided
-2. **Given** service URL is available, **When** developer opens the URL in a browser, **Then** the application interface loads
-3. **Given** application is accessible, **When** developer performs a basic operation (e.g., create a todo), **Then** the operation completes successfully
-4. **Given** frontend and backend are deployed, **When** developer tests frontend-backend communication, **Then** data flows correctly between services
-
----
-
-### User Story 5 - Deployment Management and Scaling (Priority: P5)
-
-As a developer, I need to manage and scale the deployed services so that I can test different configurations and operational scenarios.
-
-**Why this priority**: This enables operational testing and validation of Kubernetes capabilities, though the basic deployment can function without it.
-
-**Independent Test**: Can be fully tested by scaling services and verifying the changes take effect, delivering operational flexibility.
+**Independent Test**: Can be fully tested by executing kubectl-ai commands for scaling, health checks, and troubleshooting, verifying that the AI tools correctly interpret natural language queries and execute appropriate kubectl commands or provide useful insights.
 
 **Acceptance Scenarios**:
 
-1. **Given** application is deployed, **When** developer scales frontend to multiple replicas, **Then** multiple frontend pods are running
-2. **Given** services are scaled, **When** developer checks resource allocation, **Then** resources are distributed appropriately
-3. **Given** deployment exists, **When** developer updates configuration, **Then** changes are applied without downtime
-4. **Given** issues occur, **When** developer checks logs and diagnostics, **Then** relevant troubleshooting information is available
+1. **Given** the application is deployed, **When** `kubectl-ai "scale the frontend to 3 replicas"` is executed, **Then** the frontend deployment scales to 3 replicas within 1 minute
+2. **Given** the application is running, **When** `kubectl-ai "check the health of all pods"` is executed, **Then** kubectl-ai provides a summary of pod health status
+3. **Given** the cluster is operational, **When** `kagent "analyze cluster health"` is executed, **Then** kagent provides insights on cluster resource utilization, pod status, and potential issues
+4. **Given** a pod is experiencing issues, **When** `kubectl-ai "explain why the backend pod is failing"` is executed, **Then** kubectl-ai analyzes pod events and logs to provide diagnostic information
+5. **Given** AI operations are documented, **When** reviewing the documentation, **Then** manual kubectl equivalents are provided as fallback for each AI-assisted operation
 
 ---
 
 ### Edge Cases
 
-- What happens when the local cluster runs out of resources (CPU/memory)?
-- How does the system handle container image build failures?
-- What happens when Helm deployment fails mid-installation?
-- How does the system behave when services cannot communicate (network issues)?
-- What happens when attempting to deploy with missing dependencies?
-- How does the system handle port conflicts on the local machine?
-- What happens when AI DevOps tools (Docker AI, kubectl-ai, kagent) are unavailable or fail?
-- How does the system document AI tool attempts and fallback procedures?
+- **What happens when Docker build fails due to missing dependencies?** The build process should fail with clear error messages indicating which dependencies are missing, allowing Claude Code to adjust the Dockerfile and retry.
+
+- **What happens when Minikube fails to start due to insufficient resources?** The startup should fail with a clear error message about resource requirements, prompting the user to allocate more CPU/memory or adjust Minikube configuration.
+
+- **What happens when Helm install fails due to invalid chart syntax?** Helm should return validation errors indicating the specific YAML syntax issues, allowing Claude Code to regenerate or fix the chart templates.
+
+- **What happens when pods fail to start due to image pull errors?** Kubernetes should report ImagePullBackOff status, and kubectl-ai should be able to diagnose that images need to be loaded into Minikube's Docker daemon using `minikube image load`.
+
+- **What happens when the backend cannot connect to the external Neon database?** The backend pods should fail health checks and remain in CrashLoopBackOff status, with logs showing database connection errors. ConfigMap/Secret configuration should be verified.
+
+- **What happens when scaling operations exceed available cluster resources?** Kubernetes should leave pods in Pending status with events indicating insufficient CPU/memory, and kubectl-ai should identify the resource constraint.
+
+- **What happens when ConfigMap or Secret changes are made?** Pods should be restarted (manually or via rolling update) to pick up the new configuration without requiring image rebuilds.
+
+- **What happens when kubectl-ai or kagent are not available or fail?** Manual kubectl commands should be used as documented fallbacks, ensuring all operations can be performed without AI assistance.
 
 ## Requirements *(mandatory)*
 
 ### Functional Requirements
 
-- **FR-001**: System MUST provide a local Kubernetes cluster environment for deployment
-- **FR-002**: System MUST support containerization of both frontend and backend applications
-- **FR-003**: System MUST enable deployment through declarative configuration (Helm charts)
-- **FR-004**: System MUST expose deployed services through accessible local URLs
-- **FR-005**: System MUST allow verification of deployment health and status
-- **FR-006**: System MUST support scaling of deployed services
-- **FR-007**: System MUST provide access to application logs for troubleshooting
-- **FR-008**: System MUST persist deployment configuration for repeatability
-- **FR-009**: System MUST validate that all required tools are available before deployment
-- **FR-010**: System MUST support cleanup and removal of deployments
-- **FR-011**: System MUST demonstrate AI-assisted containerization using Docker AI (Gordon) or Claude-generated Docker instructions if Gordon is unavailable
+#### Containerization
+
+- **FR-001**: System MUST provide a Dockerfile for the frontend application that produces a runnable container image
+- **FR-002**: System MUST provide a Dockerfile for the backend application (FastAPI + MCP Server) that produces a runnable container image
+- **FR-003**: Docker images MUST use multi-stage builds to minimize final image size
+- **FR-004**: Docker images MUST NOT contain secrets, credentials, or environment-specific configuration baked in
+- **FR-005**: Docker images MUST define health check commands for container orchestration using /health endpoint
+
+#### Kubernetes Orchestration
+
+- **FR-006**: System MUST provide Helm charts for deploying frontend and backend services
+- **FR-007**: Helm charts MUST define Kubernetes Deployments with configurable replica counts. Initial deployment: frontend 2 replicas, backend 1 replica
+- **FR-008**: Helm charts MUST define Kubernetes Services for frontend (externally accessible) and backend (cluster-internal)
+- **FR-009**: Helm charts MUST define ConfigMaps for non-sensitive configuration (API URLs, feature flags). Frontend ConfigMap must include NEXT_PUBLIC_API_URL=http://todo-backend:8000 for backend service discovery
+- **FR-010**: Helm charts MUST define Secrets for sensitive configuration (database credentials, API keys)
+- **FR-011**: All pod specifications MUST include resource limits (CPU and memory). Frontend pods: 250m CPU request/limit, 512Mi memory request/limit. Backend pods: 500m CPU request/limit, 1Gi memory request/limit
+- **FR-012**: All pod specifications MUST include liveness and readiness probes. Both frontend and backend use /health endpoint. Liveness probe: 30s initialDelaySeconds, 10s periodSeconds, 3 failureThreshold. Readiness probe: 5s initialDelaySeconds, 5s periodSeconds, 3 failureThreshold
+
+#### Environment
+
+- **FR-013**: Deployment MUST target Minikube as the local Kubernetes cluster with 4 CPUs and 6GB memory allocated
+- **FR-014**: System MUST connect to the existing external Neon PostgreSQL database (no local database deployment required)
+- **FR-015**: All deployment steps MUST be reproducible via documented commands
+
+#### AI-Assisted Operations (Optional Enhancement)
+
+- **FR-016**: System SHOULD support kubectl-ai for natural language Kubernetes operations
+- **FR-017**: System SHOULD support kagent for cluster health analysis
+- **FR-018**: All AI-assisted operations MUST have manual kubectl equivalents documented as fallback
 
 ### Key Entities
 
-- **Kubernetes Cluster**: Local orchestration environment that manages containerized applications, provides networking, and handles resource allocation
-- **Container Image**: Packaged application artifact containing application code and dependencies, versioned and stored in image registry
-- **Helm Release**: Deployed instance of the application with specific configuration, managed as a unit for updates and rollbacks
-- **Service**: Network endpoint that exposes application functionality, routes traffic to pods
-- **Pod**: Running instance of a containerized application, the smallest deployable unit in Kubernetes
-- **Deployment Configuration**: Declarative specification of desired application state, including replicas, resources, and networking
+- **Docker Image**: Immutable artifact containing application code and runtime dependencies. Tagged with version identifiers. Built from Dockerfiles. Stored in local Docker registry or Minikube's image cache. Referenced by Kubernetes Deployments to specify which container to run.
+
+- **Helm Chart**: Collection of Kubernetes manifest templates (Deployment, Service, ConfigMap, Secret) organized in a standardized directory structure. Contains values.yaml for configuration parameters. Enables parameterized, repeatable deployments. Manages the full lifecycle of Kubernetes resources (install, upgrade, rollback, uninstall).
+
+- **Kubernetes Deployment**: Declarative specification for running application pods. Defines desired state including replica count, container image, resource limits, health probes, and environment configuration. Manages rolling updates and rollbacks.
+
+- **Kubernetes Service**: Network abstraction that provides stable endpoint for accessing pods. Frontend service exposes application externally (NodePort/LoadBalancer). Backend service provides cluster-internal communication (ClusterIP). Routes traffic to healthy pods based on label selectors.
+
+- **ConfigMap**: Kubernetes resource for storing non-sensitive configuration data as key-value pairs. Contains API endpoints, feature flags, application settings. Mounted as environment variables or files in pods. Changes require pod restart to take effect.
+
+- **Secret**: Kubernetes resource for storing sensitive configuration data (base64 encoded). Contains database credentials, API keys, authentication tokens. Mounted as environment variables or files in pods. Should never be committed to version control in plain text.
 
 ## Success Criteria *(mandatory)*
 
 ### Measurable Outcomes
 
-- **SC-001**: Developer can set up local Kubernetes environment and verify cluster health in under 10 minutes
-- **SC-002**: Container images build successfully for both frontend and backend applications using AI-assisted tooling (Docker AI/Gordon) or documented fallback
-- **SC-003**: Helm deployment completes and all services reach running state within 5 minutes
-- **SC-004**: Deployed application is accessible via local URL and responds to requests
-- **SC-005**: Developer can scale services and verify changes take effect within 2 minutes
-- **SC-006**: All deployment steps can be repeated consistently with identical results
-- **SC-007**: Developer can access logs and diagnostics for troubleshooting when issues occur
-- **SC-008**: Zero-cost deployment environment (no cloud resources required)
-- **SC-009**: AI DevOps tool usage is demonstrated for at least Docker containerization and one Kubernetes operation, with attempts and outcomes documented
+- **SC-001**: Both frontend and backend containers can be built successfully in under 5 minutes on a standard development machine (4 CPU cores, 8GB RAM)
 
-## Assumptions
+- **SC-002**: All pods reach "Running" status and pass health checks within 2 minutes of Helm chart deployment
 
-- Phase III Todo Chatbot application (frontend and backend) already exists and is functional
-- Developer has administrative access to install required tools on local machine
-- Local machine has sufficient resources (minimum 4GB RAM, 2 CPU cores) for Kubernetes cluster
-- Docker Desktop or equivalent container runtime is available for the platform
-- Network connectivity is available for downloading container base images and dependencies
-- Developer has basic familiarity with command-line tools
-- Application does not require external cloud services for core functionality
-- Standard web ports (80, 443, 8080, etc.) are available or alternative ports can be used
-- AI DevOps tools (Docker AI, kubectl-ai, kagent) may have regional or tier-based availability limitations
-- When AI tools are unavailable, Claude Code or manual approaches can serve as documented fallbacks
-- The goal is to demonstrate AI-first DevOps practices, not to require specific tool availability
+- **SC-003**: End-to-end user flow (send chat message through frontend, receive AI response from backend) works correctly through Kubernetes services with response time under 3 seconds
 
-## Out of Scope
+- **SC-004**: Backend can be scaled from 1 to 3 replicas with all replicas healthy and receiving traffic within 1 minute of scaling command execution
 
-- Production cloud deployment (covered in Phase V)
-- CI/CD pipeline automation
-- Monitoring and observability tools integration
-- Multi-cluster or distributed deployments
-- Security hardening and production-grade configurations
-- Database persistence across cluster restarts
-- SSL/TLS certificate management
-- Custom domain configuration
-- Load testing and performance optimization
-- Backup and disaster recovery procedures
+- **SC-005**: Configuration changes via ConfigMap or Secret are reflected in the application after pod restart without requiring image rebuild
 
-## Dependencies
+- **SC-006**: Deployment process is fully documented with reproducible commands, allowing any developer to deploy from scratch in under 15 minutes
 
-- Phase III Todo Chatbot application must be complete and functional
-- Docker Desktop (v4.53+) or equivalent container runtime
-- Minikube or equivalent local Kubernetes distribution
-- kubectl command-line tool
-- Helm package manager (v3+)
-- Sufficient local machine resources for running Kubernetes cluster
-- **AI DevOps Tools** (required, with documented fallbacks if unavailable):
-  - Docker AI (Gordon) for AI-assisted containerization
-  - kubectl-ai for AI-assisted Kubernetes operations
-  - kagent for AI-powered Kubernetes agent capabilities
+- **SC-007**: AI-assisted operations (kubectl-ai, kagent) successfully execute at least 3 common tasks (scaling, health checks, troubleshooting) with documented manual fallbacks
 
-## Risks and Mitigations
+## Assumptions *(if applicable)*
 
-### Risk 1: Resource Constraints on Local Machine
-**Impact**: High - Cluster may fail to start or run unstably
-**Mitigation**: Document minimum requirements, provide resource allocation guidance, include health checks
+- **Assumption 1**: The development machine has Docker Desktop 4.53+ or Docker Engine installed and running with sufficient resources (minimum 4 CPU cores, 8GB RAM available for Docker)
 
-### Risk 2: Tool Installation Complexity
-**Impact**: Medium - Developers may struggle with prerequisite setup
-**Mitigation**: Provide clear installation instructions, verification steps, and troubleshooting guide
+- **Assumption 2**: The existing Neon PostgreSQL database from Phase III is accessible from the local network and connection credentials are available
 
-### Risk 3: Container Build Failures
-**Impact**: Medium - Deployment cannot proceed without valid images
-**Mitigation**: Validate application structure before build, provide clear error messages, include build troubleshooting
+- **Assumption 3**: Phase III application code (frontend and backend) is complete, functional, and available in the `phase-04-k8s-local/` directory
 
-### Risk 4: Network Configuration Issues
-**Impact**: Medium - Services may not be accessible even when running
-**Mitigation**: Include network verification steps, provide port conflict resolution guidance
+- **Assumption 4**: kubectl, Helm v3, and Minikube are installed on the development machine before starting the deployment process
 
-### Risk 5: Platform-Specific Differences
-**Impact**: Low - Commands may vary across operating systems
-**Mitigation**: Document platform-specific variations, test on multiple platforms
+- **Assumption 5**: Docker AI (Gordon), kubectl-ai, and kagent are available and configured, but manual fallbacks will be documented for all operations
 
-### Risk 6: AI DevOps Tool Availability
-**Impact**: Medium - Required AI tools may be unavailable due to region, tier, or platform restrictions
-**Mitigation**: Document all attempts to use AI tools with specific error messages, provide clear fallback procedures (Claude-generated instructions, manual commands), ensure core functionality works with standard tooling while demonstrating AI-first approach
+- **Assumption 6**: The deployment is for local development and testing only - production-grade concerns like high availability, disaster recovery, and advanced security hardening are out of scope for Phase IV
 
-## Notes
+- **Assumption 7**: Network connectivity allows pulling base Docker images from Docker Hub and accessing the external Neon database
 
-This specification focuses on establishing a local Kubernetes deployment workflow that serves as a foundation for cloud deployment in Phase V. The emphasis is on creating a zero-cost, repeatable development environment that mirrors production cloud-native architecture.
+- **Assumption 8**: The frontend application can be configured via environment variable NEXT_PUBLIC_API_URL to point to the backend service endpoint (http://todo-backend:8000) within the Kubernetes cluster using Kubernetes DNS
 
-### AI DevOps Tools Requirement
+## Out of Scope *(if applicable)*
 
-AI-assisted DevOps tools (Docker AI/Gordon, kubectl-ai, kagent) MUST be used where available. These tools are core requirements for demonstrating AI-powered DevOps capabilities:
+- **Cloud deployment**: Phase IV focuses exclusively on local Kubernetes deployment using Minikube. Cloud platforms (AWS EKS, GCP GKE, Azure AKS, DigitalOcean DOKS) are reserved for Phase V.
 
-- **Docker AI (Gordon)**: MUST be used for containerization assistance, Dockerfile generation, and container optimization
-- **kubectl-ai**: MUST be used for Kubernetes command assistance and cluster management
-- **kagent**: MUST be demonstrated for at least minimal Kubernetes operations
+- **CI/CD pipelines**: Automated build and deployment pipelines (GitHub Actions, GitLab CI, Jenkins) are not included in Phase IV.
 
-If any tool is unavailable due to region restrictions, tier limitations, or platform constraints:
-- Attempts to use the tool MUST be documented with specific error messages
-- Fallback approaches MUST be clearly documented (e.g., Claude-generated Docker instructions, manual kubectl commands)
-- The documentation MUST explain why the tool was unavailable and what alternative was used
+- **Production-grade high availability**: Multi-node clusters, pod disruption budgets, and advanced availability configurations are out of scope.
 
-This ensures the implementation demonstrates genuine AI-assisted DevOps practices while being honest about real-world constraints.
+- **Advanced monitoring and observability**: Prometheus, Grafana, ELK stack, distributed tracing with Jaeger are not required for Phase IV.
+
+- **Service mesh**: Istio, Linkerd, or other service mesh implementations are not included.
+
+- **GitOps**: ArgoCD, Flux, or other GitOps tools are not required for Phase IV.
+
+- **Advanced security hardening**: Network policies, pod security policies, admission controllers, and vulnerability scanning are optional enhancements but not mandatory.
+
+- **Database deployment**: Phase IV uses the existing external Neon PostgreSQL database. Local database deployment with StatefulSets and persistent volumes is not required.
+
+- **Ingress controller configuration**: While basic service exposure is required, advanced ingress configurations with TLS, rate limiting, and authentication are out of scope.
+
+- **Backup and disaster recovery**: Automated backup solutions and disaster recovery procedures are not required for local development deployment.

@@ -1,6 +1,6 @@
 # Phase II: Full-Stack Web Application
 
-**Status:** ⏳ In Progress
+**Status:** ✅ Complete
 **Points:** 150
 **Tech Stack:** Next.js, FastAPI, SQLModel, Neon DB
 **Due Date:** Dec 14, 2025
