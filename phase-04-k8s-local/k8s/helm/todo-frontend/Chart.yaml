@@ -1,0 +1,12 @@
+apiVersion: v2
+name: todo-frontend
+description: Helm chart for Todo Chatbot Frontend (Next.js)
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - todo
+  - frontend
+  - nextjs
+maintainers:
+  - name: Todo Chatbot Team

@@ -1,0 +1,62 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "todo-backend.fullname" . }}
+  labels:
+    {{- include "todo-backend.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "todo-backend.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "todo-backend.selectorLabels" . | nindent 8 }}
+        app: {{ .Values.labels.app }}
+    spec:
+      containers:
+      - name: {{ .Chart.Name }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.service.targetPort }}
+          protocol: TCP
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+        livenessProbe:
+          {{- toYaml .Values.livenessProbe | nindent 10 }}
+        readinessProbe:
+          {{- toYaml .Values.readinessProbe | nindent 10 }}
+        env:
+        - name: DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.secrets.existingSecret }}
+              key: {{ .Values.secrets.databaseUrlKey }}
+        - name: ANTHROPIC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.secrets.existingSecret }}
+              key: {{ .Values.secrets.apiKeyKey }}
+        - name: BETTER_AUTH_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.secrets.existingSecret }}
+              key: {{ .Values.secrets.authSecretKey }}
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Values.secrets.existingSecret }}
+              key: {{ .Values.secrets.openaiKeyKey }}
+        - name: CORS_ORIGINS
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "todo-backend.fullname" . }}-config
+              key: CORS_ORIGINS
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: {{ include "todo-backend.fullname" . }}-config
+              key: LOG_LEVEL

@@ -1,0 +1,12 @@
+apiVersion: v2
+name: todo-backend
+description: Helm chart for Todo Chatbot Backend (FastAPI)
+type: application
+version: 0.1.0
+appVersion: "0.1.0"
+keywords:
+  - todo
+  - backend
+  - fastapi
+maintainers:
+  - name: Todo Chatbot Team

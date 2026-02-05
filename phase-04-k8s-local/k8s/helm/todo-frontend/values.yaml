@@ -1,0 +1,46 @@
+replicaCount: 2
+
+image:
+  repository: todo-frontend
+  tag: latest
+  pullPolicy: IfNotPresent
+
+service:
+  type: NodePort
+  port: 3000
+  targetPort: 3000
+  nodePort: 30080
+
+resources:
+  requests:
+    cpu: 250m
+    memory: 512Mi
+  limits:
+    cpu: 250m
+    memory: 512Mi
+
+livenessProbe:
+  httpGet:
+    path: /
+    port: 3000
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: 3000
+  initialDelaySeconds: 5
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+config:
+  apiUrl: "http://todo-backend:8000"
+
+labels:
+  app: todo-frontend
+  component: frontend
+  tier: presentation
