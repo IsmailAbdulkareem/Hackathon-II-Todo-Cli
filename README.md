@@ -55,6 +55,34 @@ A 5-phase development project demonstrating Spec-Driven Development (SDD) princi
 └── README.md                       # This file
 ```
 
+## Agent Behavior & Mental Model
+
+This project uses a **three-component mental model** for AI-assisted development:
+
+| Component | Role | Responsibility |
+|-----------|------|----------------|
+| **AGENTS.md** | The Brain | Cross-agent truth. Defines how agents should behave, what tools to use, and coding standards. |
+| **Spec-KitPlus** | The Architect | Manages spec artifacts (`.specify`, `.plan`, `.tasks`). Ensures technical rigor before coding starts. |
+| **Claude Code** | The Executor | The agentic environment. Reads the project memory and executes Spec-Kit tools via MCP. |
+
+### Key Files
+
+- **[AGENTS.md](AGENTS.md)** - Authoritative agent behavior specification (15KB, 19 sections)
+  - Mental model and SDD lifecycle
+  - PHR (Prompt History Records) and ADR (Architecture Decision Records) guidelines
+  - Development guidelines and execution contracts
+  - MCP server integration
+  - Git workflow and submission requirements
+
+- **[CLAUDE.md](CLAUDE.md)** - Lightweight shim for Claude Code (6.4KB)
+  - References AGENTS.md as authoritative source
+  - Quick-reference information
+  - Essential policies and workflows
+
+**Core Rule:** No code until spec → plan → tasks are approved.
+
+Both files are distributed across all phase directories for consistency.
+
 ## Getting Started
 
 ### Phase I - In-Memory Console App
