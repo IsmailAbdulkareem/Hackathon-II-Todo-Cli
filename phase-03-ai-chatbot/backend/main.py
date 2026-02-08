@@ -10,6 +10,8 @@ from sqlmodel import SQLModel
 from src.api.tasks import router as tasks_router
 from src.api.auth import router as auth_router
 from src.api.chat import router as chat_router
+from src.api.internal import router as internal_router
+from src.api.notifications import router as notifications_router
 from src.core.config import settings
 from src.core.database import engine
 
@@ -46,13 +48,21 @@ app = FastAPI(
     redoc_url="/redoc",
 )
 
-# Configure CORS middleware
+# Configure CORS middleware with explicit origins
+cors_origins = [
+    "http://localhost:3000",
+    "http://localhost:3001",
+    "http://127.0.0.1:3000",
+    "http://127.0.0.1:3001",
+]
+logger.info(f"Configuring CORS with origins: {cors_origins}")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=settings.cors_origins_list,
+    allow_origins=cors_origins,
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
     allow_headers=["*"],
+    expose_headers=["*"],
 )
 
 
@@ -105,6 +115,8 @@ async def global_exception_handler(request: Request, exc: Exception):
 app.include_router(auth_router)
 app.include_router(tasks_router)
 app.include_router(chat_router)
+app.include_router(internal_router)
+app.include_router(notifications_router)
 
 
 @app.get("/", tags=["health"])

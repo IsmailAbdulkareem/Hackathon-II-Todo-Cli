@@ -1,0 +1,23 @@
+# dapr/config.yaml
+apiVersion: dapr.io/v1alpha1
+kind: Configuration
+metadata:
+  name: dapr-config
+  namespace: default
+spec:
+  tracing:
+    samplingRate: "1"
+    zipkin:
+      endpointAddress: "http://zipkin.default.svc.cluster.local:9411/api/v2/spans"
+  metric:
+    enabled: true
+  # Allow HTTP endpoints for pubsub subscriptions
+  features:
+    - name: serviceInvocation
+      enabled: true
+    - name: stateManagement
+      enabled: true
+    - name: pubsub
+      enabled: true
+    - name: jobs
+      enabled: true

@@ -1,0 +1,12 @@
+# dapr/components/jobs.yaml
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: jobs-scheduler
+  namespace: default
+spec:
+  type: jobs.scheduler
+  version: v1
+  metadata:
+  - name: storeName
+    value: "redis-state"  # Use same Redis for job persistence

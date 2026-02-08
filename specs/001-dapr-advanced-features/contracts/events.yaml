@@ -1,0 +1,230 @@
+# Event Schemas for Todo Application
+
+## Standard Event Structure
+
+All events follow this standard structure:
+
+```yaml
+TaskEvent:
+  type: object
+  required: [id, task_id, event_type, timestamp, payload]
+  properties:
+    id:
+      type: string
+      format: uuid
+      description: Unique identifier for the event
+    task_id:
+      type: string
+      format: uuid
+      description: ID of the task that triggered the event
+    event_type:
+      type: string
+      enum: [TASK_CREATED, TASK_UPDATED, TASK_COMPLETED, REMINDER_DUE]
+      description: Type of the event
+    timestamp:
+      type: string
+      format: date-time
+      description: ISO 8601 timestamp when the event occurred
+    payload:
+      type: object
+      description: Additional data specific to the event type
+```
+
+## Event Types and Payloads
+
+### TASK_CREATED
+Triggered when a new task is created.
+
+Payload schema:
+```yaml
+TaskCreatedPayload:
+  type: object
+  properties:
+    user_id:
+      type: string
+      format: uuid
+      description: ID of the user who created the task
+    title:
+      type: string
+      description: Title of the created task
+    has_due_date:
+      type: boolean
+      description: Whether the task has a due date
+    has_reminder:
+      type: boolean
+      description: Whether the task has a reminder configured
+    is_recurring:
+      type: boolean
+      description: Whether the task is recurring
+```
+
+### TASK_UPDATED
+Triggered when a task is modified.
+
+Payload schema:
+```yaml
+TaskUpdatedPayload:
+  type: object
+  required: [changed_fields]
+  properties:
+    user_id:
+      type: string
+      format: uuid
+      description: ID of the user who updated the task
+    changed_fields:
+      type: array
+      items:
+        type: string
+      description: List of field names that were changed
+    changes_summary:
+      type: object
+      description: Brief summary of changes made
+```
+
+### TASK_COMPLETED
+Triggered when a task is marked as complete.
+
+Payload schema:
+```yaml
+TaskCompletedPayload:
+  type: object
+  properties:
+    user_id:
+      type: string
+      format: uuid
+      description: ID of the user who completed the task
+    time_to_completion:
+      type: integer
+      description: Number of seconds between task creation and completion
+    was_overdue:
+      type: boolean
+      description: Whether the task was overdue when completed
+```
+
+### REMINDER_DUE
+Triggered when a reminder time is reached.
+
+Payload schema:
+```yaml
+ReminderDuePayload:
+  type: object
+  properties:
+    user_id:
+      type: string
+      format: uuid
+      description: ID of the user who owns the task
+    task_title:
+      type: string
+      description: Title of the task with the due reminder
+    task_priority:
+      type: string
+      enum: [low, medium, high]
+      description: Priority level of the task
+    minutes_until_due:
+      type: integer
+      description: Minutes until the task is due (negative if overdue)
+```
+
+## Event Topics
+
+The system publishes events to the following topics:
+
+### task-events
+- Purpose: Task lifecycle events
+- Event Types: TASK_CREATED, TASK_UPDATED, TASK_COMPLETED
+- Consumers: Audit logging, user activity tracking, integration systems
+
+### task-reminders
+- Purpose: Reminder notifications
+- Event Types: REMINDER_DUE
+- Consumers: Notification service, frontend SSE stream, mobile push service
+
+### task-recurring
+- Purpose: Recurring task generation events
+- Event Types: TASK_CREATED (for recurring instances), RECURRING_TASK_GENERATED
+- Consumers: Task scheduler, audit logging, user activity tracking
+
+### task-audit
+- Purpose: Audit logging stream
+- Event Types: All event types (TASK_CREATED, TASK_UPDATED, TASK_COMPLETED, REMINDER_DUE)
+- Consumers: Audit trail, compliance reporting, analytics
+
+## Extended Event Types
+
+### RECURRING_TASK_GENERATED
+Triggered when a recurring task generates a new instance.
+
+Payload schema:
+```yaml
+RecurringTaskGeneratedPayload:
+  type: object
+  properties:
+    parent_task_id:
+      type: string
+      format: uuid
+      description: ID of the parent recurring task
+    new_instance_id:
+      type: string
+      format: uuid
+      description: ID of the new task instance created
+    user_id:
+      type: string
+      format: uuid
+      description: ID of the user who owns the recurring task
+    recurrence_pattern:
+      type: string
+      enum: [daily, weekly, monthly]
+      description: Pattern used to generate the new instance
+```
+
+## Dapr Component Configuration
+
+The events are published to Dapr pub/sub component configured as follows:
+
+```yaml
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: task-pubsub
+spec:
+  type: pubsub.redis
+  version: v1
+  metadata:
+  - name: redisHost
+    value: localhost:6379
+  - name: redisPassword
+    value: ""
+  - name: enableTLS
+    value: false
+  - name: maxActive
+    value: 1000
+  - name: maxIdle
+    value: 100
+  - name: idleTimeout
+    value: "300s"
+  - name: deserializationMode
+    value: raw
+```
+
+## Message Format
+
+Messages published to topics follow this envelope format:
+
+```json
+{
+  "id": "uuid-of-event",
+  "task_id": "uuid-of-associated-task",
+  "event_type": "EVENT_TYPE_CONSTANT",
+  "timestamp": "2026-02-06T15:00:00.000Z",
+  "payload": {
+    // Event-specific data
+  }
+}
+```
+
+## Consumer Guarantees
+
+- At-least-once delivery: Messages are guaranteed to be delivered at least once
+- Ordering: Within a single task ID, events are delivered in order
+- Durability: Messages persist until successfully consumed
+- Dead letter: Failed messages are moved to dead letter queue after max delivery attempts

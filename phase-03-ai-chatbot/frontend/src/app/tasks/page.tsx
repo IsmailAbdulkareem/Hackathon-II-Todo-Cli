@@ -3,10 +3,15 @@
 import { useTodos } from '@/hooks/use-todos';
 import { TodoForm } from '@/components/todo/todo-form';
 import { TodoList } from '@/components/todo/todo-list';
+import { SearchBox } from '@/components/todo/search-box';
+import { FilterBar, FilterState } from '@/components/todo/filter-bar';
+import { SortSelector, SortField, SortOrder } from '@/components/todo/sort-selector';
+import { NotificationBell } from '@/components/todo/notification-bell';
 import { Layout, AlertCircle, Loader2, MessageCircle } from 'lucide-react';
 import { useState, useEffect } from 'react';
-import { Task } from '@/types/todo';
+import { Task, PriorityLevel } from '@/types/todo';
 import { authService } from '@/lib/auth-service';
+import { apiService } from '@/lib/api-service';
 import Link from 'next/link';
 import { ThemeToggle } from '@/components/theme-toggle';
 import { UserProfile } from '@/components/user-profile';
@@ -18,6 +23,15 @@ export default function Home() {
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Search, filter, and sort state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [filters, setFilters] = useState<FilterState>({
+    tags: [],
+  });
+  const [sortBy, setSortBy] = useState<SortField>('created_at');
+  const [sortOrder, setSortOrder] = useState<SortOrder>('desc');
+  const [showFilters, setShowFilters] = useState(false);
 
   // Check authentication on mount
   useEffect(() => {
@@ -105,6 +119,110 @@ export default function Home() {
     }
   };
 
+  // Search and filter handlers
+  const handleSearch = () => {
+    // Search is applied through the filteredAndSortedTasks computation
+    toast.info('Search applied', {
+      description: searchQuery ? `Searching for: ${searchQuery}` : 'Showing all tasks',
+    });
+  };
+
+  const handleFilterChange = (newFilters: FilterState) => {
+    setFilters(newFilters);
+  };
+
+  const handleFilterClear = () => {
+    setFilters({ tags: [] });
+    toast.info('Filters cleared', {
+      description: 'Showing all tasks',
+    });
+  };
+
+  const handleSortChange = (field: SortField, order: SortOrder) => {
+    setSortBy(field);
+    setSortOrder(order);
+  };
+
+  // Extract unique tags from all tasks
+  const availableTags = Array.from(
+    new Set(tasks.flatMap(task => task.tags || []))
+  ).sort();
+
+  // Apply search, filters, and sorting
+  const filteredAndSortedTasks = tasks
+    .filter(task => {
+      // Text search
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        const matchesTitle = task.title.toLowerCase().includes(query);
+        const matchesDescription = task.description?.toLowerCase().includes(query);
+        const matchesTags = task.tags?.some(tag => tag.toLowerCase().includes(query));
+        if (!matchesTitle && !matchesDescription && !matchesTags) {
+          return false;
+        }
+      }
+
+      // Priority filter
+      if (filters.priority && task.priority !== filters.priority) {
+        return false;
+      }
+
+      // Completion status filter
+      if (filters.completed !== undefined && task.completed !== filters.completed) {
+        return false;
+      }
+
+      // Tags filter (task must have ALL selected tags)
+      if (filters.tags.length > 0) {
+        const taskTags = task.tags || [];
+        const hasAllTags = filters.tags.every(filterTag => taskTags.includes(filterTag));
+        if (!hasAllTags) {
+          return false;
+        }
+      }
+
+      // Due date range filter
+      if (filters.due_from || filters.due_to) {
+        if (!task.due_date) {
+          return false;
+        }
+        const taskDate = new Date(task.due_date);
+        if (filters.due_from && taskDate < new Date(filters.due_from)) {
+          return false;
+        }
+        if (filters.due_to && taskDate > new Date(filters.due_to)) {
+          return false;
+        }
+      }
+
+      return true;
+    })
+    .sort((a, b) => {
+      let comparison = 0;
+
+      switch (sortBy) {
+        case 'created_at':
+          comparison = new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+          break;
+        case 'updated_at':
+          comparison = new Date(a.updated_at).getTime() - new Date(b.updated_at).getTime();
+          break;
+        case 'due_date':
+          // Tasks without due dates go to the end
+          if (!a.due_date && !b.due_date) comparison = 0;
+          else if (!a.due_date) comparison = 1;
+          else if (!b.due_date) comparison = -1;
+          else comparison = new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+          break;
+        case 'priority':
+          const priorityOrder: Record<PriorityLevel, number> = { low: 1, medium: 2, high: 3 };
+          comparison = priorityOrder[a.priority] - priorityOrder[b.priority];
+          break;
+      }
+
+      return sortOrder === 'asc' ? comparison : -comparison;
+    });
+
   return (
     <main className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-neutral-950 dark:via-neutral-900 dark:to-neutral-950 transition-colors duration-500">
       <div className="max-w-5xl mx-auto p-4 md:p-8 space-y-6">
@@ -129,6 +247,7 @@ export default function Home() {
 
             <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto justify-end">
               <ThemeToggle />
+              {isAuthenticated && <NotificationBell />}
               {isAuthenticated && (
                 <Link
                   href="/chat"
@@ -178,6 +297,50 @@ export default function Home() {
           )}
         </header>
 
+        {/* Search and Filter Section */}
+        <section className="space-y-4 animate-in fade-in slide-in-from-bottom duration-700 delay-150">
+          {/* Search Box */}
+          <SearchBox
+            value={searchQuery}
+            onChange={setSearchQuery}
+            onSearch={handleSearch}
+            placeholder="Search tasks by title, description, or tags..."
+          />
+
+          {/* Filter Toggle and Sort */}
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3">
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className="px-4 py-2 bg-white dark:bg-neutral-900 border-2 border-neutral-200 dark:border-neutral-700 rounded-xl text-sm font-semibold text-neutral-700 dark:text-neutral-300 hover:border-blue-400 dark:hover:border-blue-500 transition-all duration-200 flex items-center justify-center gap-2"
+            >
+              {showFilters ? '🔽' : '▶️'} {showFilters ? 'Hide' : 'Show'} Filters
+              {(filters.priority || filters.tags.length > 0 || filters.completed !== undefined || filters.due_from || filters.due_to) && (
+                <span className="px-2 py-0.5 bg-blue-500 text-white text-xs rounded-full">
+                  Active
+                </span>
+              )}
+            </button>
+
+            <SortSelector
+              sortBy={sortBy}
+              sortOrder={sortOrder}
+              onSortChange={handleSortChange}
+            />
+          </div>
+
+          {/* Filter Bar (Collapsible) */}
+          {showFilters && (
+            <div className="animate-in fade-in slide-in-from-top duration-300">
+              <FilterBar
+                filters={filters}
+                onChange={handleFilterChange}
+                onClear={handleFilterClear}
+                availableTags={availableTags}
+              />
+            </div>
+          )}
+        </section>
+
         {/* Add/Edit Task Section */}
         <section className="bg-white dark:bg-neutral-900 rounded-2xl shadow-xl border border-neutral-200 dark:border-neutral-800 p-6 space-y-4 animate-in fade-in slide-in-from-bottom duration-700 delay-200">
           <div className="flex items-center justify-between">
@@ -198,7 +361,11 @@ export default function Home() {
             initialData={editingTask ? {
               title: editingTask.title,
               description: editingTask.description || undefined,
-              priority: editingTask.priority
+              priority: editingTask.priority,
+              due_date: editingTask.due_date || undefined,
+              tags: editingTask.tags || [],
+              recurrence: editingTask.recurrence || 'none',
+              reminder_offset_minutes: editingTask.reminder_offset_minutes || 0,
             } : undefined}
             key={editingTask ? `edit-${editingTask.id}` : 'add-new'}
             isLoading={isLoading}
@@ -211,12 +378,15 @@ export default function Home() {
             <h2 className="text-xl font-semibold text-neutral-900 dark:text-neutral-100 flex items-center gap-2">
               📋 Your Tasks
               <span className="px-3 py-1 bg-gradient-to-r from-blue-100 to-purple-100 dark:from-blue-950 dark:to-purple-950 text-blue-700 dark:text-blue-300 rounded-full text-sm font-bold">
-                {tasks.length}
+                {filteredAndSortedTasks.length}
+                {filteredAndSortedTasks.length !== tasks.length && (
+                  <span className="text-xs opacity-70"> / {tasks.length}</span>
+                )}
               </span>
             </h2>
           </div>
           <TodoList
-            tasks={tasks}
+            tasks={filteredAndSortedTasks}
             onToggle={handleToggle}
             onDelete={handleDelete}
             onEdit={setEditingTask}

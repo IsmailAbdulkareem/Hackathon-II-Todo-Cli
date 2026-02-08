@@ -1,4 +1,4 @@
-import { API_CONFIG, Task, CreateTaskRequest, UpdateTaskRequest, ApiError } from './api-config';
+import { API_CONFIG, Task, CreateTaskRequest, UpdateTaskRequest, ApiError, SearchParams, PaginatedResponse } from './api-config';
 import { authService } from './auth-service';
 
 class ApiService {
@@ -116,6 +116,37 @@ class ApiService {
     return this.request<Task>(API_CONFIG.ENDPOINTS.TOGGLE_COMPLETE(userId, taskId), {
       method: 'PATCH',
     });
+  }
+
+  // Search and filter tasks
+  async searchTasks(params: SearchParams): Promise<PaginatedResponse<Task>> {
+    const userId = authService.getUserId() || 'unknown';
+
+    // Build query string from params
+    const queryParams = new URLSearchParams();
+
+    if (params.q) queryParams.append('q', params.q);
+    if (params.priority) queryParams.append('priority', params.priority);
+    if (params.tags && params.tags.length > 0) {
+      params.tags.forEach(tag => queryParams.append('tags', tag));
+    }
+    if (params.completed !== undefined) queryParams.append('completed', String(params.completed));
+    if (params.due_from) queryParams.append('due_from', params.due_from);
+    if (params.due_to) queryParams.append('due_to', params.due_to);
+    if (params.page) queryParams.append('page', String(params.page));
+    if (params.limit) queryParams.append('limit', String(params.limit));
+    if (params.sort_by) queryParams.append('sort_by', params.sort_by);
+    if (params.sort_order) queryParams.append('sort_order', params.sort_order);
+
+    const endpoint = `${API_CONFIG.ENDPOINTS.SEARCH_TASKS(userId)}?${queryParams.toString()}`;
+    return this.request<PaginatedResponse<Task>>(endpoint);
+  }
+
+  // Get notification status
+  async getNotificationStatus(): Promise<{ user_id: string; connected: boolean; connection_count: number }> {
+    return this.request<{ user_id: string; connected: boolean; connection_count: number }>(
+      API_CONFIG.ENDPOINTS.NOTIFICATIONS_STATUS()
+    );
   }
 }
 

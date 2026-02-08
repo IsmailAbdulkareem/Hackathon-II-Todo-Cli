@@ -179,3 +179,6 @@ Current (as of 2026-02-06):
 
 **Last Updated:** 2026-02-06
 **Authoritative Source:** AGENTS.md
+
+## Recent Changes
+- 001-dapr-advanced-features: Added Python 3.13+ (backend), TypeScript/Node.js 20+ (frontend) + FastAPI (backend), Dapr 1.12+, Redis 6.0+, Next.js 16+, React 19, Tailwind CSS

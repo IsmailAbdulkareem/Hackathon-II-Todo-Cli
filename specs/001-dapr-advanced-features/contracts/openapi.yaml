@@ -1,0 +1,507 @@
+openapi: 3.0.3
+info:
+  title: Todo API - Phase V Advanced Features
+  description: API for advanced task management with due dates, priorities, tags, recurring tasks, reminders, and search/filter
+  version: 1.0.0
+servers:
+  - url: http://localhost:8000/api
+    description: Local development server
+  - url: https://todo-app.example.com/api
+    description: Production server
+
+paths:
+  /tasks:
+    get:
+      summary: List user's tasks with filtering and pagination
+      description: Retrieve a paginated list of tasks for the authenticated user with optional filtering and sorting
+      parameters:
+        - name: page
+          in: query
+          description: Page number for pagination
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Number of items per page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: priority
+          in: query
+          description: Filter by priority level
+          required: false
+          schema:
+            type: string
+            enum: [low, medium, high]
+        - name: completed
+          in: query
+          description: Filter by completion status
+          required: false
+          schema:
+            type: boolean
+        - name: due_from
+          in: query
+          description: Filter tasks with due date on or after this date
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: due_to
+          in: query
+          description: Filter tasks with due date on or before this date
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: sort_by
+          in: query
+          description: Field to sort by
+          required: false
+          schema:
+            type: string
+            enum: [priority, due_date, created_at, updated_at]
+            default: created_at
+        - name: sort_order
+          in: query
+          description: Sort order (asc or desc)
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: Successful response with tasks list
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Task'
+                  pagination:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                      limit:
+                        type: integer
+                      total:
+                        type: integer
+                      total_pages:
+                        type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+    post:
+      summary: Create a new task
+      description: Create a new task with optional due date, priority, tags, recurrence, and reminders
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTaskRequest'
+      responses:
+        '201':
+          description: Task created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /tasks/{id}:
+    get:
+      summary: Get task details
+      description: Retrieve details of a specific task by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: Task details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    put:
+      summary: Update task
+      description: Update an existing task with new details
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTaskRequest'
+      responses:
+        '200':
+          description: Task updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+    delete:
+      summary: Delete task
+      description: Delete a task and cancel any associated reminders
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '204':
+          description: Task deleted successfully
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /tasks/search:
+    get:
+      summary: Search and filter tasks
+      description: Advanced search with multiple filter options and sorting
+      parameters:
+        - name: q
+          in: query
+          description: Text search in title or description
+          required: false
+          schema:
+            type: string
+        - name: priority
+          in: query
+          description: Filter by priority level
+          required: false
+          schema:
+            type: string
+            enum: [low, medium, high]
+        - name: tags
+          in: query
+          description: Filter by tags (multiple allowed)
+          required: false
+          style: form
+          explode: false
+          schema:
+            type: array
+            items:
+              type: string
+        - name: completed
+          in: query
+          description: Filter by completion status
+          required: false
+          schema:
+            type: boolean
+        - name: due_from
+          in: query
+          description: Filter tasks with due date on or after this date
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: due_to
+          in: query
+          description: Filter tasks with due date on or before this date
+          required: false
+          schema:
+            type: string
+            format: date
+        - name: page
+          in: query
+          description: Page number for pagination
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+        - name: limit
+          in: query
+          description: Number of items per page
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+        - name: sort_by
+          in: query
+          description: Field to sort by
+          required: false
+          schema:
+            type: string
+            enum: [priority, due_date, created_at, updated_at]
+            default: created_at
+        - name: sort_order
+          in: query
+          description: Sort order (asc or desc)
+          required: false
+          schema:
+            type: string
+            enum: [asc, desc]
+            default: desc
+      responses:
+        '200':
+          description: Search results
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  items:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Task'
+                  pagination:
+                    type: object
+                    properties:
+                      page:
+                        type: integer
+                      limit:
+                        type: integer
+                      total:
+                        type: integer
+                      total_pages:
+                        type: integer
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /notifications/stream:
+    get:
+      summary: Server-Sent Events stream for notifications
+      description: Establish a persistent connection for receiving real-time reminder notifications
+      parameters:
+        - name: Authorization
+          in: header
+          description: Bearer token for authentication
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Event stream connection established
+          content:
+            text/plain:
+              schema:
+                type: string
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+components:
+  schemas:
+    Task:
+      type: object
+      required:
+        - id
+        - user_id
+        - title
+        - completed
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique identifier for the task
+        user_id:
+          type: string
+          format: uuid
+          description: Identifier of the user who owns this task
+        title:
+          type: string
+          maxLength: 255
+          description: Title of the task
+        description:
+          type: string
+          maxLength: 1000
+          description: Optional description of the task
+        completed:
+          type: boolean
+          description: Whether the task is completed
+        created_at:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp when the task was created
+        updated_at:
+          type: string
+          format: date-time
+          description: ISO 8601 timestamp when the task was last updated
+        due_date:
+          type: string
+          format: date-time
+          description: Optional due date for the task
+        priority:
+          type: string
+          enum: [low, medium, high]
+          default: medium
+          description: Priority level of the task
+        tags:
+          type: array
+          items:
+            type: string
+          maxItems: 20
+          description: List of tags associated with the task
+        recurrence:
+          type: string
+          enum: [none, daily, weekly, monthly]
+          default: none
+          description: Recurrence pattern for the task
+        reminder_offset_minutes:
+          type: integer
+          minimum: 0
+          maximum: 2147483647
+          description: Minutes before due date to send reminder (0 if no reminder)
+
+    CreateTaskRequest:
+      type: object
+      required:
+        - title
+      properties:
+        title:
+          type: string
+          maxLength: 255
+          description: Title of the task
+        description:
+          type: string
+          maxLength: 1000
+          description: Optional description of the task
+        due_date:
+          type: string
+          format: date-time
+          description: Optional due date for the task
+        priority:
+          type: string
+          enum: [low, medium, high]
+          default: medium
+          description: Priority level of the task
+        tags:
+          type: array
+          items:
+            type: string
+          maxItems: 20
+          description: List of tags to associate with the task
+        recurrence:
+          type: string
+          enum: [none, daily, weekly, monthly]
+          default: none
+          description: Recurrence pattern for the task
+        reminder_offset_minutes:
+          type: integer
+          minimum: 0
+          maximum: 2147483647
+          description: Minutes before due date to send reminder (0 if no reminder)
+
+    UpdateTaskRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          maxLength: 255
+          description: Updated title of the task
+        description:
+          type: string
+          maxLength: 1000
+          description: Updated description of the task
+        completed:
+          type: boolean
+          description: Updated completion status
+        due_date:
+          type: string
+          format: date-time
+          description: Updated due date for the task
+        priority:
+          type: string
+          enum: [low, medium, high]
+          description: Updated priority level of the task
+        tags:
+          type: array
+          items:
+            type: string
+          maxItems: 20
+          description: Updated list of tags to associate with the task
+        recurrence:
+          type: string
+          enum: [none, daily, weekly, monthly]
+          description: Updated recurrence pattern for the task
+        reminder_offset_minutes:
+          type: integer
+          minimum: 0
+          maximum: 2147483647
+          description: Updated minutes before due date to send reminder (0 if no reminder)
+
+  responses:
+    Unauthorized:
+      description: Unauthorized - Invalid or missing authentication token
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Unauthorized"
+              message:
+                type: string
+                example: "Authentication token is missing or invalid"
+
+    BadRequest:
+      description: Bad Request - Invalid request parameters
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Bad Request"
+              message:
+                type: string
+                example: "Request validation failed"
+
+    NotFound:
+      description: Not Found - Resource does not exist
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              error:
+                type: string
+                example: "Not Found"
+              message:
+                type: string
+                example: "The requested resource was not found"
