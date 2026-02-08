@@ -4,12 +4,10 @@ from datetime import datetime, timezone
 from typing import List, Optional, Dict, Any
 
 from fastapi import APIRouter, Depends, HTTPException, Path, Query, status
-from sqlmodel import Session, select
-import json
 
 from src.core.auth import get_current_user_id, validate_user_ownership
-from src.core.database import get_session
-from src.core.event_publisher import event_publisher
+from src.core.dependencies import get_repository
+from src.core.repository_interface import TaskRepository
 from src.models.task import Task, TaskCreate, TaskRead, TaskUpdate, PriorityEnum, RecurrenceEnum
 from src.services.reminder_service import reminder_service
 from src.services.recurring_service import recurring_service
@@ -66,7 +64,7 @@ async def get_all_tasks(
     due_date_end: Optional[datetime] = Query(None, description="Alias for due_to"),
     sort_by: Optional[str] = Query("created_at", description="Field to sort by"),
     sort_order: Optional[str] = Query("desc", description="Sort order (asc or desc)"),
-    session: Session = Depends(get_session)
+    repository: TaskRepository = Depends(get_repository)
 ) -> list[Task]:
     """
     Retrieve all tasks for a specific user with optional filtering and sorting.
@@ -84,71 +82,48 @@ async def get_all_tasks(
         due_date_end: Alias for due_to
         sort_by: Field to sort by
         sort_order: Sort order (asc or desc)
-        session: Database session (injected)
+        repository: Task repository (injected)
 
     Returns:
         List of tasks (empty array if user has no tasks)
 
     Raises:
         HTTPException: 401 if JWT invalid, 403 if accessing other user's tasks
-        HTTPException: 500 if database connection fails
+        HTTPException: 500 if repository operation fails
     """
     # Validate user ownership
     validate_user_ownership(jwt_user_id, user_id)
 
     try:
-        # Use jwt_user_id for database query (not url user_id)
-        statement = select(Task).where(Task.user_id == jwt_user_id)
-
-        # Apply filters
-        if priority is not None:
-            statement = statement.where(Task.priority == priority.value)
-        if completed is not None:
-            statement = statement.where(Task.completed == completed)
-
         # Support both parameter names for due date range
         start_date = due_date_start or due_from
         end_date = due_date_end or due_to
 
-        if start_date is not None:
-            statement = statement.where(Task.due_date >= start_date)
-        if end_date is not None:
-            statement = statement.where(Task.due_date <= end_date)
-
-        # Execute query to get all matching tasks
-        tasks = session.exec(statement).all()
-
-        # Apply tag filtering (in-memory since tags are JSON)
+        # Parse tags if provided
+        tag_list = None
         if tags:
             tag_list = [t.strip() for t in tags.split(",")]
-            tasks = [task for task in tasks if task.tags and any(tag in task.tags for tag in tag_list)]
 
-        # Apply text search (in-memory)
-        if search:
-            search_lower = search.lower()
-            tasks = [
-                task for task in tasks
-                if (task.title and search_lower in task.title.lower()) or
-                   (task.description and search_lower in task.description.lower()) or
-                   (task.tags and any(search_lower in tag.lower() for tag in task.tags))
-            ]
-
-        # Apply sorting
-        if sort_by == "priority":
-            priority_order = {"high": 3, "medium": 2, "low": 1}
-            tasks = sorted(tasks, key=lambda t: priority_order.get(t.priority.value, 0), reverse=(sort_order == "desc"))
-        elif sort_by == "due_date":
-            tasks = sorted(tasks, key=lambda t: t.due_date or datetime.max.replace(tzinfo=timezone.utc), reverse=(sort_order == "desc"))
-        elif sort_by == "updated_at":
-            tasks = sorted(tasks, key=lambda t: t.updated_at, reverse=(sort_order == "desc"))
-        else:  # Default to created_at
-            tasks = sorted(tasks, key=lambda t: t.created_at, reverse=(sort_order == "desc"))
+        # Use repository search method
+        tasks = await repository.search(
+            user_id=jwt_user_id,
+            query=search,
+            completed=completed,
+            priority=priority.value if priority else None,
+            tags=tag_list,
+            due_from=start_date,
+            due_to=end_date,
+            sort_by=sort_by,
+            sort_order=sort_order,
+            skip=0,
+            limit=1000
+        )
 
         return tasks
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Database connection error"
+            detail="Repository operation failed"
         )
 
 
@@ -158,7 +133,7 @@ async def create_task(
     task_data: TaskCreate,
     user_id: str = Depends(validate_user_id),
     jwt_user_id: str = Depends(get_current_user_id),
-    session: Session = Depends(get_session)
+    repository: TaskRepository = Depends(get_repository)
 ) -> Task:
     """
     Create a new task for a specific user with advanced features (due date, priority, tags, etc.).
@@ -167,7 +142,7 @@ async def create_task(
         user_id: User identifier from URL
         jwt_user_id: Authenticated user ID from JWT token
         task_data: Task creation data (title, description, due_date, priority, tags, recurrence, reminder_offset_minutes)
-        session: Database session (injected)
+        repository: Task repository (injected)
 
     Returns:
         Created task with generated ID and timestamps
@@ -175,28 +150,14 @@ async def create_task(
     Raises:
         HTTPException: 401 if JWT invalid, 403 if accessing other user's tasks
         HTTPException: 422 if validation fails (handled by FastAPI)
-        HTTPException: 500 if database connection fails
+        HTTPException: 500 if repository operation fails
     """
     # Validate user ownership
     validate_user_ownership(jwt_user_id, user_id)
 
     try:
-        # Create new task with jwt_user_id (not url user_id)
-        task = Task(
-            user_id=jwt_user_id,
-            title=task_data.title,
-            description=task_data.description,
-            due_date=task_data.due_date,
-            priority=task_data.priority,
-            tags=task_data.tags,
-            recurrence=task_data.recurrence,
-            reminder_offset_minutes=task_data.reminder_offset_minutes,
-            completed=False  # Default value
-        )
-
-        session.add(task)
-        session.commit()
-        session.refresh(task)
+        # Create task using repository
+        task = await repository.create(jwt_user_id, task_data)
 
         # Schedule reminder if configured
         if task.reminder_offset_minutes and task.reminder_offset_minutes > 0 and task.due_date:
@@ -227,30 +188,11 @@ async def create_task(
                 # Log error but don't fail task creation
                 print(f"Failed to schedule recurring task for task {task.id}: {e}")
 
-        # Publish TASK_CREATED event
-        try:
-            await event_publisher.publish(
-                topic="task-events",
-                event_type="TASK_CREATED",
-                task_id=task.id,
-                payload={
-                    "user_id": jwt_user_id,
-                    "title": task.title,
-                    "priority": task.priority.value if task.priority else None,
-                    "due_date": task.due_date.isoformat() if task.due_date else None,
-                    "recurrence": task.recurrence.value if task.recurrence else None
-                }
-            )
-        except Exception as e:
-            # Log error but don't fail task creation
-            print(f"Failed to publish TASK_CREATED event for task {task.id}: {e}")
-
         return task
     except Exception as e:
-        session.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Database connection error"
+            detail="Repository operation failed"
         )
 
 
@@ -260,7 +202,7 @@ async def toggle_task_completion(
     id: str,
     user_id: str = Depends(validate_user_id),
     jwt_user_id: str = Depends(get_current_user_id),
-    session: Session = Depends(get_session)
+    repository: TaskRepository = Depends(get_repository)
 ) -> Task:
     """
     Toggle the completion status of a task.
@@ -269,7 +211,7 @@ async def toggle_task_completion(
         user_id: User identifier from URL
         jwt_user_id: Authenticated user ID from JWT token
         id: Task identifier (UUID)
-        session: Database session (injected)
+        repository: Task repository (injected)
 
     Returns:
         Updated task with toggled completion status
@@ -277,15 +219,14 @@ async def toggle_task_completion(
     Raises:
         HTTPException: 401 if JWT invalid, 403 if accessing other user's tasks
         HTTPException: 404 if task not found or belongs to different user
-        HTTPException: 500 if database connection fails
+        HTTPException: 500 if repository operation fails
     """
     # Validate user ownership
     validate_user_ownership(jwt_user_id, user_id)
 
     try:
-        # Use jwt_user_id for database query
-        statement = select(Task).where(Task.id == id, Task.user_id == jwt_user_id)
-        task = session.exec(statement).first()
+        # Get existing task
+        task = await repository.get_by_id(jwt_user_id, id)
 
         if not task:
             raise HTTPException(
@@ -295,12 +236,9 @@ async def toggle_task_completion(
 
         # Toggle completion status
         old_completed = task.completed
-        task.completed = not task.completed
-        task.updated_at = datetime.now(timezone.utc)
+        update_data = TaskUpdate(completed=not task.completed)
 
-        session.add(task)
-        session.commit()
-        session.refresh(task)
+        task = await repository.update(jwt_user_id, id, update_data)
 
         # Cancel reminder if task is now completed
         if task.completed and task.reminder_offset_minutes and task.reminder_offset_minutes > 0:
@@ -309,30 +247,13 @@ async def toggle_task_completion(
             except Exception as e:
                 print(f"Failed to cancel reminder for completed task {task.id}: {e}")
 
-        # Publish TASK_COMPLETED event if task was marked as completed
-        if task.completed and not old_completed:
-            try:
-                await event_publisher.publish(
-                    topic="task-events",
-                    event_type="TASK_COMPLETED",
-                    task_id=task.id,
-                    payload={
-                        "user_id": jwt_user_id,
-                        "title": task.title,
-                        "completed_at": task.updated_at.isoformat()
-                    }
-                )
-            except Exception as e:
-                print(f"Failed to publish TASK_COMPLETED event for task {task.id}: {e}")
-
         return task
     except HTTPException:
         raise
     except Exception as e:
-        session.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Database connection error"
+            detail="Repository operation failed"
         )
 
 
@@ -342,7 +263,7 @@ async def get_task_by_id(
     id: str,
     user_id: str = Depends(validate_user_id),
     jwt_user_id: str = Depends(get_current_user_id),
-    session: Session = Depends(get_session)
+    repository: TaskRepository = Depends(get_repository)
 ) -> Task:
     """
     Retrieve a single task by ID for a specific user.
@@ -351,7 +272,7 @@ async def get_task_by_id(
         user_id: User identifier from URL
         jwt_user_id: Authenticated user ID from JWT token
         id: Task identifier (UUID)
-        session: Database session (injected)
+        repository: Task repository (injected)
 
     Returns:
         Task object
@@ -359,15 +280,13 @@ async def get_task_by_id(
     Raises:
         HTTPException: 401 if JWT invalid, 403 if accessing other user's tasks
         HTTPException: 404 if task not found or belongs to different user
-        HTTPException: 500 if database connection fails
+        HTTPException: 500 if repository operation fails
     """
     # Validate user ownership
     validate_user_ownership(jwt_user_id, user_id)
 
     try:
-        # Use jwt_user_id for database query
-        statement = select(Task).where(Task.id == id, Task.user_id == jwt_user_id)
-        task = session.exec(statement).first()
+        task = await repository.get_by_id(jwt_user_id, id)
 
         if not task:
             raise HTTPException(
@@ -381,7 +300,7 @@ async def get_task_by_id(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Database connection error"
+            detail="Repository operation failed"
         )
 
 
@@ -392,7 +311,7 @@ async def update_task(
     task_data: TaskUpdate,
     user_id: str = Depends(validate_user_id),
     jwt_user_id: str = Depends(get_current_user_id),
-    session: Session = Depends(get_session)
+    repository: TaskRepository = Depends(get_repository)
 ) -> Task:
     """
     Update an existing task with advanced features (title, description, due date, priority, tags, etc.).
@@ -402,7 +321,7 @@ async def update_task(
         jwt_user_id: Authenticated user ID from JWT token
         id: Task identifier (UUID)
         task_data: Task update data (title, description, due_date, priority, tags, recurrence, reminder_offset_minutes)
-        session: Database session (injected)
+        repository: Task repository (injected)
 
     Returns:
         Updated task
@@ -411,54 +330,27 @@ async def update_task(
         HTTPException: 401 if JWT invalid, 403 if accessing other user's tasks
         HTTPException: 404 if task not found or belongs to different user
         HTTPException: 422 if validation fails (handled by FastAPI)
-        HTTPException: 500 if database connection fails
+        HTTPException: 500 if repository operation fails
     """
     # Validate user ownership
     validate_user_ownership(jwt_user_id, user_id)
 
     try:
-        # Use jwt_user_id for database query
-        statement = select(Task).where(Task.id == id, Task.user_id == jwt_user_id)
-        task = session.exec(statement).first()
+        # Get existing task to check reminder/recurrence changes
+        existing_task = await repository.get_by_id(jwt_user_id, id)
 
-        if not task:
+        if not existing_task:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Task not found"
             )
 
-        # Track changes for event publishing
-        changes = {}
-        old_due_date = task.due_date
-        old_reminder_offset = task.reminder_offset_minutes
-        old_recurrence = task.recurrence
+        old_due_date = existing_task.due_date
+        old_reminder_offset = existing_task.reminder_offset_minutes
+        old_recurrence = existing_task.recurrence
 
-        # Update task fields
-        if task_data.title is not None:
-            changes["title"] = {"old": task.title, "new": task_data.title}
-            task.title = task_data.title
-        if task_data.description is not None:
-            task.description = task_data.description
-        if task_data.due_date is not None:
-            changes["due_date"] = {"old": old_due_date, "new": task_data.due_date}
-            task.due_date = task_data.due_date
-        if task_data.priority is not None:
-            changes["priority"] = {"old": task.priority, "new": task_data.priority}
-            task.priority = task_data.priority
-        if task_data.tags is not None:
-            task.tags = task_data.tags
-        if task_data.recurrence is not None:
-            changes["recurrence"] = {"old": old_recurrence, "new": task_data.recurrence}
-            task.recurrence = task_data.recurrence
-        if task_data.reminder_offset_minutes is not None:
-            changes["reminder_offset"] = {"old": old_reminder_offset, "new": task_data.reminder_offset_minutes}
-            task.reminder_offset_minutes = task_data.reminder_offset_minutes
-
-        task.updated_at = datetime.now(timezone.utc)
-
-        session.add(task)
-        session.commit()
-        session.refresh(task)
+        # Update task using repository
+        task = await repository.update(jwt_user_id, id, task_data)
 
         # Handle reminder updates
         if task.due_date and task.reminder_offset_minutes and task.reminder_offset_minutes > 0:
@@ -503,28 +395,13 @@ async def update_task(
             except Exception as e:
                 print(f"Failed to cancel recurring job for task {task.id}: {e}")
 
-        # Publish TASK_UPDATED event
-        try:
-            await event_publisher.publish(
-                topic="task-events",
-                event_type="TASK_UPDATED",
-                task_id=task.id,
-                payload={
-                    "user_id": jwt_user_id,
-                    "changes": changes
-                }
-            )
-        except Exception as e:
-            print(f"Failed to publish TASK_UPDATED event for task {task.id}: {e}")
-
         return task
     except HTTPException:
         raise
     except Exception as e:
-        session.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Database connection error"
+            detail="Repository operation failed"
         )
 
 
@@ -534,7 +411,7 @@ async def delete_task(
     id: str,
     user_id: str = Depends(validate_user_id),
     jwt_user_id: str = Depends(get_current_user_id),
-    session: Session = Depends(get_session)
+    repository: TaskRepository = Depends(get_repository)
 ) -> None:
     """
     Delete a task permanently.
@@ -543,7 +420,7 @@ async def delete_task(
         user_id: User identifier from URL
         jwt_user_id: Authenticated user ID from JWT token
         id: Task identifier (UUID)
-        session: Database session (injected)
+        repository: Task repository (injected)
 
     Returns:
         None (204 No Content)
@@ -551,15 +428,14 @@ async def delete_task(
     Raises:
         HTTPException: 401 if JWT invalid, 403 if accessing other user's tasks
         HTTPException: 404 if task not found or belongs to different user
-        HTTPException: 500 if database connection fails
+        HTTPException: 500 if repository operation fails
     """
     # Validate user ownership
     validate_user_ownership(jwt_user_id, user_id)
 
     try:
-        # Use jwt_user_id for database query
-        statement = select(Task).where(Task.id == id, Task.user_id == jwt_user_id)
-        task = session.exec(statement).first()
+        # Get task to check reminder/recurrence before deletion
+        task = await repository.get_by_id(jwt_user_id, id)
 
         if not task:
             raise HTTPException(
@@ -581,31 +457,22 @@ async def delete_task(
             except Exception as e:
                 print(f"Failed to cancel recurring job for task {task.id}: {e}")
 
-        session.delete(task)
-        session.commit()
+        # Delete task using repository
+        result = await repository.delete(jwt_user_id, id)
 
-        # Publish TASK_DELETED event
-        try:
-            await event_publisher.publish(
-                topic="task-events",
-                event_type="TASK_DELETED",
-                task_id=task.id,
-                payload={
-                    "user_id": jwt_user_id,
-                    "title": task.title
-                }
+        if not result:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Task not found"
             )
-        except Exception as e:
-            print(f"Failed to publish TASK_DELETED event for task {task.id}: {e}")
 
         return None
     except HTTPException:
         raise
     except Exception as e:
-        session.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Database connection error"
+            detail="Repository operation failed"
         )
 
 
@@ -624,7 +491,7 @@ async def search_tasks(
     limit: int = Query(20, ge=1, le=100, description="Number of items per page"),
     sort_by: Optional[str] = Query("created_at", description="Field to sort by"),
     sort_order: Optional[str] = Query("desc", description="Sort order (asc or desc)"),
-    session: Session = Depends(get_session)
+    repository: TaskRepository = Depends(get_repository)
 ) -> Dict[str, Any]:
     """
     Advanced search and filter tasks with pagination and sorting.
@@ -642,90 +509,39 @@ async def search_tasks(
         limit: Number of items per page
         sort_by: Field to sort by
         sort_order: Sort order (asc or desc)
-        session: Database session (injected)
+        repository: Task repository (injected)
 
     Returns:
         Dictionary with tasks list and pagination info
 
     Raises:
         HTTPException: 401 if JWT invalid, 403 if accessing other user's tasks
-        HTTPException: 500 if database connection fails
+        HTTPException: 500 if repository operation fails
     """
     # Validate user ownership
     validate_user_ownership(jwt_user_id, user_id)
 
     try:
-        # Use jwt_user_id for database query (not url user_id)
-        statement = select(Task).where(Task.user_id == jwt_user_id)
+        # Calculate offset for pagination
+        skip = (page - 1) * limit
 
-        # Apply text search
-        if q:
-            search_term = f"%{q}%"
-            statement = statement.where(
-                (Task.title.ilike(search_term)) | (Task.description.ilike(search_term))
-            )
+        # Use repository search method
+        tasks = await repository.search(
+            user_id=jwt_user_id,
+            query=q,
+            completed=completed,
+            priority=priority.value if priority else None,
+            tags=tags,
+            due_from=due_from,
+            due_to=due_to,
+            sort_by=sort_by,
+            sort_order=sort_order,
+            skip=skip,
+            limit=limit
+        )
 
-        # Apply filters
-        if priority is not None:
-            statement = statement.where(Task.priority == priority.value)
-        if tags is not None and len(tags) > 0:
-            # Filter by tags - need to match any of the provided tags
-            for tag in tags:
-                statement = statement.where(Task.tags.op('@>')([tag.lower()]))
-        if completed is not None:
-            statement = statement.where(Task.completed == completed)
-        if due_from is not None:
-            statement = statement.where(Task.due_date >= due_from)
-        if due_to is not None:
-            statement = statement.where(Task.due_date <= due_to)
-
-        # Count total for pagination
-        count_statement = select(Task.id).where(Task.user_id == jwt_user_id)
-        if q:
-            count_statement = count_statement.where(
-                (Task.title.ilike(search_term)) | (Task.description.ilike(search_term))
-            )
-        if priority is not None:
-            count_statement = count_statement.where(Task.priority == priority.value)
-        if tags is not None and len(tags) > 0:
-            for tag in tags:
-                count_statement = count_statement.where(Task.tags.op('@>')([tag.lower()]))
-        if completed is not None:
-            count_statement = count_statement.where(Task.completed == completed)
-        if due_from is not None:
-            count_statement = count_statement.where(Task.due_date >= due_from)
-        if due_to is not None:
-            count_statement = count_statement.where(Task.due_date <= due_to)
-
-        total_count = session.exec(count_statement).count()
-
-        # Apply sorting
-        if sort_by == "priority":
-            if sort_order == "asc":
-                statement = statement.order_by(Task.priority.asc())
-            else:
-                statement = statement.order_by(Task.priority.desc())
-        elif sort_by == "due_date":
-            if sort_order == "asc":
-                statement = statement.order_by(Task.due_date.asc())
-            else:
-                statement = statement.order_by(Task.due_date.desc())
-        elif sort_by == "updated_at":
-            if sort_order == "asc":
-                statement = statement.order_by(Task.updated_at.asc())
-            else:
-                statement = statement.order_by(Task.updated_at.desc())
-        else:  # Default to created_at
-            if sort_order == "asc":
-                statement = statement.order_by(Task.created_at.asc())
-            else:
-                statement = statement.order_by(Task.created_at.desc())
-
-        # Apply pagination
-        offset = (page - 1) * limit
-        statement = statement.offset(offset).limit(limit)
-
-        tasks = session.exec(statement).all()
+        # Get total count for pagination
+        total_count = await repository.count(jwt_user_id, completed=completed)
 
         return {
             "items": tasks,
@@ -739,5 +555,5 @@ async def search_tasks(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Database connection error"
+            detail="Repository operation failed"
         )

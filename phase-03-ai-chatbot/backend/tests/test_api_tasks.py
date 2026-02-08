@@ -11,11 +11,154 @@ from datetime import datetime, timezone
 from unittest.mock import AsyncMock, MagicMock, patch
 from sqlmodel import Session, create_engine, SQLModel
 from sqlmodel.pool import StaticPool
+from typing import List, Optional
 
 from main import app
-from src.models.task import Task, PriorityEnum, RecurrenceEnum
+from src.models.task import Task, TaskCreate, TaskUpdate, PriorityEnum, RecurrenceEnum
 from src.core.database import get_session
 from src.core.auth import get_current_user_id
+from src.core.dependencies import get_repository
+from src.core.repository_interface import TaskRepository
+from src.services.fallback_task_repository import FallbackTaskRepository
+
+
+class TestTaskRepository(FallbackTaskRepository):
+    """Test repository that uses the test session"""
+
+    def __init__(self, test_engine):
+        self.test_engine = test_engine
+
+    async def create(self, user_id: str, task_data: TaskCreate) -> Task:
+        """Create using test engine"""
+        with Session(self.test_engine) as session:
+            task = Task(
+                user_id=user_id,
+                title=task_data.title,
+                description=task_data.description,
+                due_date=task_data.due_date,
+                priority=task_data.priority,
+                tags=task_data.tags or [],
+                recurrence=task_data.recurrence,
+                reminder_offset_minutes=task_data.reminder_offset_minutes or 0
+            )
+            session.add(task)
+            session.commit()
+            session.refresh(task)
+            return task
+
+    async def get_by_id(self, user_id: str, task_id: str) -> Optional[Task]:
+        """Get by ID using test engine"""
+        from sqlmodel import select
+        with Session(self.test_engine) as session:
+            statement = select(Task).where(Task.id == task_id, Task.user_id == user_id)
+            task = session.exec(statement).first()
+            return task
+
+    async def update(self, user_id: str, task_id: str, task_data: TaskUpdate) -> Optional[Task]:
+        """Update using test engine"""
+        from sqlmodel import select
+        with Session(self.test_engine) as session:
+            statement = select(Task).where(Task.id == task_id, Task.user_id == user_id)
+            task = session.exec(statement).first()
+
+            if not task:
+                return None
+
+            update_dict = task_data.dict(exclude_unset=True)
+            for field, value in update_dict.items():
+                setattr(task, field, value)
+
+            task.updated_at = datetime.now(timezone.utc)
+
+            session.add(task)
+            session.commit()
+            session.refresh(task)
+            return task
+
+    async def delete(self, user_id: str, task_id: str) -> bool:
+        """Delete using test engine"""
+        from sqlmodel import select
+        with Session(self.test_engine) as session:
+            statement = select(Task).where(Task.id == task_id, Task.user_id == user_id)
+            task = session.exec(statement).first()
+
+            if not task:
+                return False
+
+            session.delete(task)
+            session.commit()
+            return True
+
+    async def get_all(self, user_id: str, skip: int = 0, limit: int = 100) -> List[Task]:
+        """Get all using test engine"""
+        from sqlmodel import select
+        with Session(self.test_engine) as session:
+            statement = select(Task).where(Task.user_id == user_id).offset(skip).limit(limit)
+            tasks = session.exec(statement).all()
+            return list(tasks)
+
+    async def count(self, user_id: str, completed: Optional[bool] = None) -> int:
+        """Count using test engine"""
+        from sqlmodel import select
+        with Session(self.test_engine) as session:
+            statement = select(Task).where(Task.user_id == user_id)
+
+            if completed is not None:
+                statement = statement.where(Task.completed == completed)
+
+            tasks = session.exec(statement).all()
+            return len(list(tasks))
+
+    async def search(self, user_id: str, query: Optional[str] = None,
+                    completed: Optional[bool] = None, priority: Optional[str] = None,
+                    tags: Optional[List[str]] = None, due_from: Optional[datetime] = None,
+                    due_to: Optional[datetime] = None, sort_by: str = "created_at",
+                    sort_order: str = "desc", skip: int = 0, limit: int = 100) -> List[Task]:
+        """Search using test engine"""
+        from sqlmodel import select, or_
+        with Session(self.test_engine) as session:
+            statement = select(Task).where(Task.user_id == user_id)
+
+            if query:
+                statement = statement.where(
+                    or_(
+                        Task.title.ilike(f"%{query}%"),
+                        Task.description.ilike(f"%{query}%")
+                    )
+                )
+
+            if completed is not None:
+                statement = statement.where(Task.completed == completed)
+
+            if priority:
+                statement = statement.where(Task.priority == priority)
+
+            if due_from:
+                statement = statement.where(Task.due_date >= due_from)
+
+            if due_to:
+                statement = statement.where(Task.due_date <= due_to)
+
+            # Get all matching tasks
+            tasks = list(session.exec(statement).all())
+
+            # Apply tag filtering in memory
+            if tags:
+                tasks = [t for t in tasks if t.tags and any(tag in t.tags for tag in tags)]
+
+            # Sort in memory
+            if sort_by == "priority":
+                priority_order = {"high": 3, "medium": 2, "low": 1}
+                tasks = sorted(tasks, key=lambda t: priority_order.get(t.priority.value if hasattr(t.priority, 'value') else t.priority, 0), reverse=(sort_order == "desc"))
+            elif sort_by == "due_date":
+                tasks = sorted(tasks, key=lambda t: t.due_date or datetime.max.replace(tzinfo=timezone.utc), reverse=(sort_order == "desc"))
+            elif sort_by == "updated_at":
+                tasks = sorted(tasks, key=lambda t: t.updated_at, reverse=(sort_order == "desc"))
+            else:  # Default to created_at
+                tasks = sorted(tasks, key=lambda t: t.created_at, reverse=(sort_order == "desc"))
+
+            # Paginate
+            return tasks[skip:skip + limit]
 
 
 # Create in-memory SQLite database for testing
@@ -35,14 +178,21 @@ def session_fixture():
 @pytest.fixture(name="client")
 def client_fixture(session: Session):
     """Create a test client with overridden dependencies"""
+    test_engine = session.get_bind()
+
     def get_session_override():
         return session
 
     def get_current_user_id_override():
         return "test-user-456"
 
+    async def get_repository_override():
+        """Return a test repository that uses the test database"""
+        return TestTaskRepository(test_engine)
+
     app.dependency_overrides[get_session] = get_session_override
     app.dependency_overrides[get_current_user_id] = get_current_user_id_override
+    app.dependency_overrides[get_repository] = get_repository_override
 
     client = TestClient(app)
     yield client

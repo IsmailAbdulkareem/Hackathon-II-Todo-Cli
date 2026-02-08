@@ -209,6 +209,10 @@ class TaskUpdate(TaskBase):
         le=2147483647,
         description="Minutes before due date to send reminder (0 if no reminder)"
     )
+    completed: Optional[bool] = Field(
+        default=None,
+        description="Completion status of the task"
+    )
 
 
 class TaskRead(TaskBase):
