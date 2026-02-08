@@ -10,13 +10,17 @@ const LOCAL_STORAGE_KEY = 'local_tasks';
 function apiTaskToFrontendTask(apiTask: ApiTask): Task {
   return {
     id: apiTask.id,
+    user_id: apiTask.user_id,
     title: apiTask.title,
     description: apiTask.description,
-    status: apiTask.completed ? 'completed' : 'pending',
-    priority: 'medium', // Default priority for Phase 3
     completed: apiTask.completed,
-    createdAt: apiTask.created_at,
-    updatedAt: apiTask.updated_at,
+    created_at: apiTask.created_at,
+    updated_at: apiTask.updated_at,
+    due_date: apiTask.due_date || null,
+    priority: apiTask.priority || 'medium',
+    tags: apiTask.tags || [],
+    recurrence: apiTask.recurrence || 'none',
+    reminder_offset_minutes: apiTask.reminder_offset_minutes || 0,
   };
 }
 
