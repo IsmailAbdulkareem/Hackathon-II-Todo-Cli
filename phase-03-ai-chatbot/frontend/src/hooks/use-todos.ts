@@ -13,7 +13,7 @@ function apiTaskToFrontendTask(apiTask: ApiTask): Task {
     title: apiTask.title,
     description: apiTask.description,
     status: apiTask.completed ? 'completed' : 'pending',
-    priority: 1, // Backend doesn't have priority yet (Phase 2)
+    priority: 'medium', // Default priority for Phase 3
     completed: apiTask.completed,
     createdAt: apiTask.created_at,
     updatedAt: apiTask.updated_at,
