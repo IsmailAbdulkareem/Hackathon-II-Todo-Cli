@@ -12,6 +12,7 @@ from src.api.auth import router as auth_router
 from src.api.chat import router as chat_router
 from src.api.internal import router as internal_router
 from src.api.notifications import router as notifications_router
+from src.api.events import router as events_router
 from src.core.config import settings
 from src.core.database import engine
 
@@ -117,6 +118,7 @@ app.include_router(tasks_router)
 app.include_router(chat_router)
 app.include_router(internal_router)
 app.include_router(notifications_router)
+app.include_router(events_router)
 
 
 @app.get("/", tags=["health"])

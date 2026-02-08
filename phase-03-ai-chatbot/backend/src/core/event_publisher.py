@@ -54,7 +54,7 @@ class DaprEventPublisher(EventPublisher):
         payload: Dict[str, Any]
     ) -> None:
         """
-        Publish event to Dapr Pub/Sub.
+        Publish event to Dapr Pub/Sub using CloudEvent format.
 
         Args:
             topic: Event topic (task-events, task-reminders, etc.)
@@ -65,12 +65,13 @@ class DaprEventPublisher(EventPublisher):
         # Dapr Pub/Sub API: POST /v1.0/publish/{pubsub}/{topic}
         url = f"http://localhost:{self.dapr_http_port}/v1.0/publish/{self.pubsub_name}/{topic}"
 
+        # CloudEvent format for Dapr
         event = {
-            "id": str(uuid.uuid4()),
+            "event_id": str(uuid.uuid4()),
+            "type": event_type,
             "task_id": task_id,
-            "event_type": event_type,
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "payload": payload
+            "data": payload
         }
 
         async with httpx.AsyncClient() as client:
@@ -97,12 +98,12 @@ class MockEventPublisher(EventPublisher):
         Store the event in memory for testing purposes.
         """
         event = {
-            "id": str(uuid.uuid4()),
+            "event_id": str(uuid.uuid4()),
             "topic": topic,
             "task_id": task_id,
-            "event_type": event_type,
+            "type": event_type,
             "timestamp": datetime.now(timezone.utc).isoformat(),
-            "payload": payload
+            "data": payload
         }
         self.published_events.append(event)
 
