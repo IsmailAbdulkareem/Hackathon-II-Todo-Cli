@@ -142,13 +142,17 @@ export function useTodos() {
       const now = new Date().toISOString();
       const newTask: Task = {
         id: generateId(),
+        user_id: 'local_user',
         title: data.title,
-        description: data.description || '',
-        status: 'pending',
-        priority: data.priority || 1,
+        description: data.description || null,
         completed: false,
-        createdAt: now,
-        updatedAt: now,
+        created_at: now,
+        updated_at: now,
+        due_date: data.due_date || null,
+        priority: data.priority || 'medium',
+        tags: data.tags || [],
+        recurrence: data.recurrence || 'none',
+        reminder_offset_minutes: data.reminder_offset_minutes || 0,
       };
       const updatedTasks = [newTask, ...tasks];
       setTasks(updatedTasks);
@@ -180,7 +184,7 @@ export function useTodos() {
           ? {
               ...task,
               ...updates,
-              updatedAt: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
             }
           : task
       );
@@ -227,8 +231,7 @@ export function useTodos() {
           ? {
               ...task,
               completed: !task.completed,
-              status: (!task.completed ? 'completed' : 'pending') as TodoStatus,
-              updatedAt: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
             }
           : task
       );
