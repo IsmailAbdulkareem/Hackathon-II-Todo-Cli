@@ -54,10 +54,18 @@ todo.db
 .DS_Store
 Thumbs.db
 
-# Documentation (keep README_HF.md)
-README.md
-TESTING.md
+# Documentation
+*.md
+!README_HF.md
 
 # Git
 .git/
 .gitignore
+
+# Tests
+tests/
+.pytest_cache/
+
+# Deployment files
+Dockerfile
+.dockerignore

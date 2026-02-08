@@ -10,17 +10,13 @@ const LOCAL_STORAGE_KEY = 'local_tasks';
 function apiTaskToFrontendTask(apiTask: ApiTask): Task {
   return {
     id: apiTask.id,
-    user_id: apiTask.user_id,
     title: apiTask.title,
     description: apiTask.description,
+    status: apiTask.completed ? 'completed' : 'pending',
+    priority: 1, // Backend doesn't have priority yet (Phase 2)
     completed: apiTask.completed,
-    created_at: apiTask.created_at,
-    updated_at: apiTask.updated_at,
-    due_date: apiTask.due_date || null,
-    priority: apiTask.priority || 'medium',
-    tags: apiTask.tags || [],
-    recurrence: apiTask.recurrence || 'none',
-    reminder_offset_minutes: apiTask.reminder_offset_minutes || 0,
+    createdAt: apiTask.created_at,
+    updatedAt: apiTask.updated_at,
   };
 }
 
@@ -142,17 +138,13 @@ export function useTodos() {
       const now = new Date().toISOString();
       const newTask: Task = {
         id: generateId(),
-        user_id: 'local_user',
         title: data.title,
-        description: data.description || null,
+        description: data.description || '',
+        status: 'pending',
+        priority: data.priority || 1,
         completed: false,
-        created_at: now,
-        updated_at: now,
-        due_date: data.due_date || null,
-        priority: data.priority || 'medium',
-        tags: data.tags || [],
-        recurrence: data.recurrence || 'none',
-        reminder_offset_minutes: data.reminder_offset_minutes || 0,
+        createdAt: now,
+        updatedAt: now,
       };
       const updatedTasks = [newTask, ...tasks];
       setTasks(updatedTasks);
@@ -184,7 +176,7 @@ export function useTodos() {
           ? {
               ...task,
               ...updates,
-              updated_at: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
             }
           : task
       );
@@ -231,7 +223,8 @@ export function useTodos() {
           ? {
               ...task,
               completed: !task.completed,
-              updated_at: new Date().toISOString(),
+              status: (!task.completed ? 'completed' : 'pending') as TodoStatus,
+              updatedAt: new Date().toISOString(),
             }
           : task
       );
