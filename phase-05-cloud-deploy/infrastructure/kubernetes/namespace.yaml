@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: taskai
+  labels:
+    app: taskai
+    environment: production
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: taskai-dev
+  labels:
+    app: taskai
+    environment: development

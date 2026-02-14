@@ -1,0 +1,20 @@
+# Notification Service Dependencies
+# Python 3.13+
+
+# Web framework
+fastapi>=0.109.0
+uvicorn[standard]>=0.27.0
+pydantic>=2.5.0
+pydantic-settings>=2.1.0
+
+# HTTP client
+httpx>=0.26.0
+
+# Dapr SDK
+dapr>=1.12.0
+
+# Email service (Resend API)
+resend>=0.7.0
+
+# Logging and monitoring
+python-json-logger>=2.0.7

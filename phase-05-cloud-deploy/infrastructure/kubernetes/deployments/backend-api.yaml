@@ -1,0 +1,121 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: backend-api
+  namespace: taskai
+  labels:
+    app: taskai
+    component: backend-api
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: taskai
+      component: backend-api
+  template:
+    metadata:
+      labels:
+        app: taskai
+        component: backend-api
+      annotations:
+        dapr.io/enabled: "true"
+        dapr.io/app-id: "backend-api"
+        dapr.io/app-port: "8000"
+        dapr.io/enable-api-logging: "true"
+        dapr.io/log-level: "info"
+    spec:
+      containers:
+      - name: backend-api
+        image: taskai/backend-api:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8000
+          name: http
+          protocol: TCP
+        env:
+        # Environment variables from ConfigMap
+        - name: POSTGRES_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: taskai-config
+              key: POSTGRES_HOST
+        - name: POSTGRES_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: taskai-config
+              key: POSTGRES_PORT
+        - name: POSTGRES_DB
+          valueFrom:
+            configMapKeyRef:
+              name: taskai-config
+              key: POSTGRES_DB
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          valueFrom:
+            configMapKeyRef:
+              name: taskai-config
+              key: KAFKA_BOOTSTRAP_SERVERS
+        - name: OPENAI_MODEL
+          valueFrom:
+            configMapKeyRef:
+              name: taskai-config
+              key: OPENAI_MODEL
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: taskai-config
+              key: LOG_LEVEL
+        - name: ENVIRONMENT
+          valueFrom:
+            configMapKeyRef:
+              name: taskai-config
+              key: ENVIRONMENT
+        # Environment variables from Secrets
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: taskai-secrets
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: taskai-secrets
+              key: POSTGRES_PASSWORD
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: taskai-secrets
+              key: JWT_SECRET
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: taskai-secrets
+              key: OPENAI_API_KEY
+        - name: RESEND_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: taskai-secrets
+              key: RESEND_API_KEY
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "250m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8000
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+      restartPolicy: Always

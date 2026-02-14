@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: recurring-service
+  namespace: taskai
+  labels:
+    app: taskai
+    component: recurring-service
+spec:
+  type: ClusterIP
+  selector:
+    app: taskai
+    component: recurring-service
+  ports:
+  - name: http
+    port: 8002
+    targetPort: 8002
+    protocol: TCP
+  sessionAffinity: None

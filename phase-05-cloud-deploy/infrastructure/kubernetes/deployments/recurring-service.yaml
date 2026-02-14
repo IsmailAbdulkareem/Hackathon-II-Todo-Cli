@@ -1,0 +1,111 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: recurring-service
+  namespace: taskai
+  labels:
+    app: taskai
+    component: recurring-service
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: taskai
+      component: recurring-service
+  template:
+    metadata:
+      labels:
+        app: taskai
+        component: recurring-service
+      annotations:
+        dapr.io/enabled: "true"
+        dapr.io/app-id: "recurring-service"
+        dapr.io/app-port: "8002"
+        dapr.io/enable-api-logging: "true"
+        dapr.io/log-level: "info"
+    spec:
+      containers:
+      - name: recurring-service
+        image: taskai/recurring-service:latest
+        imagePullPolicy: IfNotPresent
+        ports:
+        - containerPort: 8002
+          name: http
+          protocol: TCP
+        env:
+        # Environment variables from ConfigMap
+        - name: POSTGRES_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: taskai-config
+              key: POSTGRES_HOST
+        - name: POSTGRES_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: taskai-config
+              key: POSTGRES_PORT
+        - name: POSTGRES_DB
+          valueFrom:
+            configMapKeyRef:
+              name: taskai-config
+              key: POSTGRES_DB
+        - name: KAFKA_BOOTSTRAP_SERVERS
+          valueFrom:
+            configMapKeyRef:
+              name: taskai-config
+              key: KAFKA_BOOTSTRAP_SERVERS
+        - name: KAFKA_TOPIC_TASK_EVENTS
+          valueFrom:
+            configMapKeyRef:
+              name: taskai-config
+              key: KAFKA_TOPIC_TASK_EVENTS
+        - name: LOG_LEVEL
+          valueFrom:
+            configMapKeyRef:
+              name: taskai-config
+              key: LOG_LEVEL
+        - name: ENVIRONMENT
+          valueFrom:
+            configMapKeyRef:
+              name: taskai-config
+              key: ENVIRONMENT
+        - name: RECURRING_SERVICE_PORT
+          valueFrom:
+            configMapKeyRef:
+              name: taskai-config
+              key: RECURRING_SERVICE_PORT
+        # Environment variables from Secrets
+        - name: POSTGRES_USER
+          valueFrom:
+            secretKeyRef:
+              name: taskai-secrets
+              key: POSTGRES_USER
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: taskai-secrets
+              key: POSTGRES_PASSWORD
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "256Mi"
+            cpu: "250m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8002
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 3
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8002
+          initialDelaySeconds: 10
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+      restartPolicy: Always

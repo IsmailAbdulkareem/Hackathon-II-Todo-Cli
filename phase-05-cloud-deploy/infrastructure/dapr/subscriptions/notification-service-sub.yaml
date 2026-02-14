@@ -1,0 +1,41 @@
+apiVersion: dapr.io/v2alpha1
+kind: Subscription
+metadata:
+  name: notification-service-reminders-subscription
+  namespace: taskai
+spec:
+  # Pub/Sub component name
+  pubsubname: kafka-pubsub
+
+  # Topic to subscribe to
+  topic: reminders
+
+  # Route to send events to
+  routes:
+    default: /reminders
+
+  # Scopes - which apps can use this subscription
+  scopes:
+    - notification-service
+
+  # Metadata for subscription behavior
+  metadata:
+    # Consumer group for Kafka
+    - name: consumerGroup
+      value: taskai-notification-service
+
+    # Enable dead letter topic for failed messages
+    - name: deadLetterTopic
+      value: reminders-dlq
+
+    # Max concurrent messages
+    - name: maxConcurrentHandlers
+      value: "10"
+
+    # Message delivery retry policy
+    - name: maxRetries
+      value: "3"
+
+    # Retry backoff (exponential)
+    - name: retryBackoff
+      value: "5s"

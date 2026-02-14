@@ -1,0 +1,19 @@
+apiVersion: dapr.io/v1alpha1
+kind: Component
+metadata:
+  name: jobs
+spec:
+  type: jobs.postgresql
+  version: v1
+  metadata:
+  - name: connectionString
+    value: "host=localhost user=postgres password=postgres port=5432 dbname=taskai sslmode=disable"
+  - name: tableName
+    value: "dapr_jobs"
+  - name: cleanupIntervalInSeconds
+    value: "3600"
+  - name: maxRetries
+    value: "3"
+scopes:
+- backend-api
+- notification-service

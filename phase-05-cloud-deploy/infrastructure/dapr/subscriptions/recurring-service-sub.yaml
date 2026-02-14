@@ -1,0 +1,49 @@
+apiVersion: dapr.io/v2alpha1
+kind: Subscription
+metadata:
+  name: recurring-service-subscription
+spec:
+  # Pub/Sub component to use
+  pubsubname: kafka-pubsub
+
+  # Topic to subscribe to
+  topic: task-events
+
+  # Route where events will be delivered
+  routes:
+    default: /task-events
+
+  # Scopes - which apps can use this subscription
+  scopes:
+    - recurring-service
+
+  # Metadata for subscription behavior
+  metadata:
+    # Maximum number of concurrent messages to process
+    maxConcurrentHandlers: "10"
+
+    # Dead letter topic for failed events after retries
+    deadLetterTopic: "task-events-dlq"
+
+    # Retry policy
+    retryPolicy:
+      # Maximum number of retry attempts
+      maxRetries: "3"
+
+      # Backoff strategy: exponential
+      backoffStrategy: "exponential"
+
+      # Initial retry interval (5 seconds)
+      initialInterval: "5s"
+
+      # Maximum retry interval (5 minutes)
+      maxInterval: "300s"
+
+      # Multiplier for exponential backoff
+      multiplier: "2"
+
+  # Bulk subscribe settings for better performance
+  bulkSubscribe:
+    enabled: true
+    maxMessagesCount: 100
+    maxAwaitDurationMs: 1000

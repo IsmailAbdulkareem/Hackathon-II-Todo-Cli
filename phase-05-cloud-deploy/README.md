@@ -1,556 +1,469 @@
-# Phase V: Advanced Cloud Deployment
+# TaskAI - Phase 5: Cloud-Native Deployment
 
-**Status:** 🔜 Pending
-**Points:** 300
-**Tech Stack:** Kafka, Dapr, DigitalOcean DOKS
-**Due Date:** Jan 18, 2026
+**Status:** ✅ Complete
+**Architecture:** Microservices with Event-Driven Design
+**Tech Stack:** FastAPI, Next.js, Kafka, Dapr, Kubernetes, PostgreSQL
+**Deployment:** Minikube (local) / Cloud Kubernetes (production)
 
 ## Overview
 
-Phase V deploys the application to DigitalOcean Kubernetes (DOKS) with enterprise-grade features including Kafka event streaming and Dapr for distributed application runtime.
+TaskAI Phase 5 is a cloud-native, event-driven task management system built on microservices architecture. The system leverages Kubernetes for orchestration, Dapr for distributed application runtime, and Kafka for event streaming.
 
-## What's New
+## Features
 
-### Event Streaming
-- **Kafka**: Distributed event bus for async processing
-- **Event Sourcing**: Complete audit trail of todo changes
-- **CQRS Pattern**: Separate read/write models
-- **Event Replay**: Rebuild state from event log
+### Core Features
+- ✅ **Task Management**: Create, read, update, delete tasks
+- ✅ **User Authentication**: JWT-based authentication
+- ✅ **Tag System**: Organize tasks with customizable tags
+- ✅ **Advanced Search**: Full-text search with filters
+- ✅ **Due Dates & Reminders**: Schedule tasks with email notifications
+- ✅ **Recurring Tasks**: Automatic task generation based on recurrence patterns
+- ✅ **AI-Powered Chat**: Natural language task creation with OpenAI GPT-4
+- ✅ **Real-Time Sync**: Keep tasks synchronized across clients
 
-### Dapr Integration
-- **Service Invocation**: Secure service-to-service communication
-- **State Management**: Abstraction for multiple stores
-- **Pub/Sub**: Decoupled event publishing
-- **Secrets Management**: Secure credential handling
-- **Distributed Tracing**: End-to-end observability
+### Technical Features
+- 🏗️ **Microservices Architecture**: 4 independent services
+- 📨 **Event-Driven**: Kafka for async communication
+- 🔄 **Dapr Integration**: Service mesh capabilities
+- ☸️ **Kubernetes Native**: Cloud-ready deployment
+- 🔐 **Secure**: JWT authentication, encrypted secrets
+- 📊 **Observable**: Health checks, logging, metrics
+- 🚀 **Scalable**: Horizontal pod autoscaling
 
-### Cloud-Native
-- **DigitalOcean DOKS**: Managed Kubernetes
-- **Auto-scaling**: Cluster auto-scaler
-- **GitOps**: ArgoCD for continuous delivery
-- **CI/CD**: GitHub Actions for automation
-- **Multi-region**: Global deployment strategy
+## Architecture
 
-## Prerequisites
+### Services
 
-```bash
-# Install doctl (DigitalOcean CLI)
-curl -sSL https://dl.digitalocean.com/doctl/install.sh | sh
-
-# Install ArgoCD CLI
-curl -sSL -o argocd-linux-amd64 https://github.com/argoproj/argo-cd/releases/latest/download/argocd-linux-amd64
-chmod +x argocd-linux-amd64
-sudo mv argocd-linux-amd64 /usr/local/bin/argocd
-
-# Install Dapr CLI
-wget -q https://raw.githubusercontent.com/dapr/cli/master/install/install.sh -O - | /bin/bash
-
-# Install Kafka CLI Tools (kafkacat)
-# For event inspection and debugging
-sudo apt-get install kafkacat
 ```
+┌─────────────────────────────────────────────────────────────────┐
+│                         Ingress (NGINX)                          │
+│                      taskai.local / Cloud LB                     │
+└────────────────┬────────────────────────────┬───────────────────┘
+                 │                            │
+                 ▼                            ▼
+        ┌────────────────┐          ┌─────────────────┐
+        │    Frontend    │          │   Backend API   │
+        │   (Next.js)    │◄─────────┤   (FastAPI)     │
+        │   Port: 3000   │  REST    │   Port: 8000    │
+        └────────────────┘          └────────┬────────┘
+                                             │
+                                             │ Dapr Pub/Sub
+                                             ▼
+                                    ┌────────────────────┐
+                                    │   Kafka (Strimzi)  │
+                                    │  task-events topic │
+                                    │  reminders topic   │
+                                    └─────┬──────────┬───┘
+                                          │          │
+                        ┌─────────────────┘          └──────────────┐
+                        ▼                                           ▼
+              ┌──────────────────┐                    ┌──────────────────────┐
+              │ Recurring Service│                    │ Notification Service │
+              │   (FastAPI)      │                    │     (FastAPI)        │
+              │   Port: 8002     │                    │     Port: 8001       │
+              └──────────────────┘                    └──────────────────────┘
+                        │                                           │
+                        └───────────────┬───────────────────────────┘
+                                        ▼
+                                ┌───────────────┐
+                                │  PostgreSQL   │
+                                │  (Shared DB)  │
+                                └───────────────┘
+```
+
+### Service Responsibilities
+
+| Service | Port | Purpose |
+|---------|------|---------|
+| **Frontend** | 3000 | Next.js UI with React 19, real-time updates, AI chat interface |
+| **Backend API** | 8000 | RESTful API, authentication, task CRUD, AI integration, event publishing |
+| **Recurring Service** | 8002 | Subscribes to task events, generates recurring task instances |
+| **Notification Service** | 8001 | Subscribes to reminder events, sends email notifications via Resend |
 
 ## Quick Start
 
-### 1. Create DigitalOcean Kubernetes Cluster
+### Prerequisites
+
+- **Docker** 24+
+- **kubectl** 1.28+
+- **Minikube** 1.32+ (for local deployment)
+- **Dapr CLI** 1.12+
+- **Helm** 3.12+ (optional)
+
+### Option 1: Local Deployment (Minikube)
 
 ```bash
-# Authenticate with DigitalOcean
-doctl auth init
+# 1. Setup Minikube cluster
+cd infrastructure/scripts
+chmod +x *.sh
+./setup-minikube.sh
 
-# Create DOKS cluster
-doctl kubernetes cluster create todo-app-cluster \
-  --region nyc1 \
-  --version latest \
-  --node-pool "name=worker-pool;count=3;size=s-4vcpu-8gb" \
-  --auto-upgrade
+# 2. Install Dapr
+./install-dapr.sh
 
-# Get kubeconfig
-doctl kubernetes cluster kubeconfig save todo-app-cluster
+# 3. Install Kafka
+./install-kafka.sh
 
-# Verify connection
-kubectl get nodes
+# 4. Configure secrets (IMPORTANT!)
+# Edit infrastructure/kubernetes/secrets.yaml with your credentials:
+# - POSTGRES_PASSWORD
+# - JWT_SECRET
+# - OPENAI_API_KEY
+# - RESEND_API_KEY
+
+# 5. Deploy TaskAI
+./deploy-local.sh
+
+# 6. Add to /etc/hosts
+echo "$(minikube ip) taskai.local" | sudo tee -a /etc/hosts
+
+# 7. Access application
+# Frontend: http://taskai.local
+# API: http://taskai.local/api
+# Health: http://taskai.local/health
 ```
 
-### 2. Set Up Kafka (Strimzi)
+### Option 2: Docker Compose (Development)
 
 ```bash
-# Install Strimzi operator
-kubectl create namespace kafka
-kubectl apply -f https://strimzi.io/install/latest?namespace=kafka -n kafka
-
-# Deploy Kafka cluster
-kubectl apply -f k8s/kafka/kafka-cluster.yaml
-
-# Wait for Kafka to be ready
-kubectl wait kafka/my-cluster --for=condition=Ready --timeout=300s -n kafka
-
-# Create topics
-kubectl apply -f k8s/kafka/topics.yaml
+cd infrastructure/docker-compose
+docker-compose up
 ```
 
-### 3. Install Dapr
+Access:
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:8000
+- API Docs: http://localhost:8000/docs
+
+### Option 3: Cloud Deployment
 
 ```bash
-# Initialize Dapr in Kubernetes
-dapr init --kubernetes --enable-ha=true --enable-mtls=true
+# 1. Configure kubectl for your cloud cluster
+# Azure: az aks get-credentials --resource-group myRG --name myCluster
+# GCP: gcloud container clusters get-credentials myCluster --zone us-central1-a
+# AWS: aws eks update-kubeconfig --name myCluster --region us-east-1
 
-# Verify installation
-dapr status --kubernetes
+# 2. Build and push images to your registry
+REGISTRY="your-registry.azurecr.io"
+cd services/backend-api
+docker build -t $REGISTRY/taskai/backend-api:latest .
+docker push $REGISTRY/taskai/backend-api:latest
+# Repeat for other services...
 
-# Install Dapr components (Redis for state, Kafka for pub/sub)
-kubectl apply -f k8s/dapr/components/
-```
+# 3. Update image references in deployment manifests
 
-### 4. Deploy Application with ArgoCD
+# 4. Configure production secrets
+kubectl create secret generic taskai-secrets \
+  --from-literal=POSTGRES_PASSWORD=$(openssl rand -base64 24) \
+  --from-literal=JWT_SECRET=$(openssl rand -base64 32) \
+  --from-literal=OPENAI_API_KEY=$OPENAI_API_KEY \
+  --from-literal=RESEND_API_KEY=$RESEND_API_KEY \
+  --namespace=taskai
 
-```bash
-# Install ArgoCD
-kubectl create namespace argocd
-kubectl apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
-
-# Get initial admin password
-argocd admin initial-password -n argocd
-
-# Create application from git
-argocd app create todo-app \
-  --repo https://github.com/your-org/todo-app.git \
-  --path phase-05-cloud-deploy/argo \
-  --dest-server https://kubernetes.default.svc \
-  --dest-namespace production
-
-# Sync application
-argocd app sync todo-app
-```
-
-### 5. Access Application
-
-```bash
-# Get external IP
-kubectl get svc -n production
-
-# Access via load balancer or ingress
-http://<external-ip>
+# 5. Deploy to cloud
+cd infrastructure/scripts
+./deploy-cloud.sh prod
 ```
 
 ## Project Structure
 
 ```
 phase-05-cloud-deploy/
-├── k8s/
-│   ├── kafka/
-│   │   ├── kafka-cluster.yaml    # Kafka cluster definition
-│   │   ├── topics.yaml           # Kafka topics
-│   │   └── connectors.yaml       # Kafka Connect
-│   ├── dapr/
-│   │   ├── components/           # Dapr components
-│   │   │   ├── pubsub.yaml       # Kafka pub/sub
-│   │   │   ├── state.yaml        # Redis state
-│   │   │   └── secret.yaml       # Secret store
-│   │   └── config/
-│   │       └── dapr-config.yaml  # Dapr config
-│   ├── base/                    # Kustomize base
-│   └── overlays/
-│       ├── production/
-│       └── staging/
-├── argo/
-│   ├── Application.yaml         # ArgoCD app definition
-│   └── kustomization.yaml
-├── terraform/                   # Infrastructure as Code
-│   ├── main.tf                  # DO resources
-│   ├── variables.tf             # Variables
-│   └── outputs.tf               # Outputs
-├── src/
-│   ├── events/                   # Event sourcing
-│   │   ├── todo_events.py       # Event definitions
-│   │   ├── event_store.py       # Event storage
-│   │   └── projection.py        # Read projections
-│   ├── sagas/                   # Saga orchestration
-│   │   └── todo_saga.py         # Distributed transactions
-│   └── dapr/                    # Dapr integration
-│       ├── dapr_client.py       # Dapr client
-│       └── actors.py            # Virtual actors
-├── github-workflows/            # CI/CD
-│   ├── build-and-push.yml
-│   ├── deploy.yml
-│   └── drift-detection.yml
-└── monitoring/
-    ├── prometheus/
-    ├── grafana/
-    └── alerts/
+├── services/                           # Microservices
+│   ├── backend-api/                    # Core API service
+│   │   ├── src/
+│   │   │   ├── api/                    # REST endpoints
+│   │   │   ├── core/                   # Config, database, auth
+│   │   │   ├── models/                 # SQLAlchemy models
+│   │   │   ├── services/               # Business logic
+│   │   │   └── schemas/                # Pydantic schemas
+│   │   ├── tests/
+│   │   ├── main.py
+│   │   ├── Dockerfile
+│   │   └── requirements.txt
+│   │
+│   ├── recurring-service/              # Recurring task processor
+│   │   ├── src/
+│   │   │   ├── subscriber.py           # Dapr subscriber
+│   │   │   ├── recurrence_engine.py    # Recurrence logic
+│   │   │   └── dapr_client.py
+│   │   ├── main.py
+│   │   └── Dockerfile
+│   │
+│   ├── notification-service/           # Email notifications
+│   │   ├── src/
+│   │   │   ├── subscriber.py           # Dapr subscriber
+│   │   │   ├── email_sender.py         # Resend integration
+│   │   │   └── retry_handler.py
+│   │   ├── main.py
+│   │   └── Dockerfile
+│   │
+│   └── frontend/                       # Next.js UI
+│       ├── src/
+│       │   ├── app/                    # Next.js 16 app router
+│       │   ├── components/             # React components
+│       │   ├── services/               # API client
+│       │   └── types/                  # TypeScript types
+│       ├── public/
+│       ├── Dockerfile
+│       └── package.json
+│
+├── infrastructure/                     # Deployment configs
+│   ├── kubernetes/                     # K8s manifests
+│   │   ├── namespace.yaml
+│   │   ├── configmap.yaml
+│   │   ├── secrets.yaml
+│   │   ├── deployments/
+│   │   ├── services/
+│   │   └── ingress/
+│   │
+│   ├── dapr/                          # Dapr components
+│   │   ├── components/
+│   │   │   ├── kafka-pubsub.yaml
+│   │   │   ├── statestore.yaml
+│   │   │   └── secrets.yaml
+│   │   └── subscriptions/
+│   │
+│   ├── kafka/                         # Kafka configs
+│   │   └── kafka-cluster.yaml
+│   │
+│   ├── scripts/                       # Deployment scripts
+│   │   ├── setup-minikube.sh
+│   │   ├── install-dapr.sh
+│   │   ├── install-kafka.sh
+│   │   ├── deploy-local.sh
+│   │   ├── deploy-cloud.sh
+│   │   └── teardown.sh
+│   │
+│   └── docker-compose/                # Local development
+│       └── docker-compose.yml
+│
+└── docs/                              # Documentation
+    ├── architecture.md
+    ├── api-reference.md
+    ├── deployment-guide.md
+    ├── local-development.md
+    └── mcp-tools.md
 ```
 
-## Event Architecture
+## Technology Stack
 
-### Kafka Topics
+### Backend
+- **Python 3.13+**: Modern Python with type hints
+- **FastAPI**: High-performance async web framework
+- **SQLAlchemy**: ORM for PostgreSQL
+- **Pydantic**: Data validation
+- **OpenAI GPT-4**: AI-powered natural language processing
+- **Resend**: Email delivery service
 
-| Topic | Purpose | Partitions | Retention |
-|-------|---------|------------|-----------|
-| `todo-events` | Todo change events | 3 | 7 days |
-| `todo-commands` | Incoming commands | 3 | 7 days |
-| `todo-notifications` | Notification events | 2 | 1 day |
-| `todo-analytics` | Analytics events | 3 | 30 days |
+### Frontend
+- **Next.js 16**: React framework with App Router
+- **React 19**: Latest React with concurrent features
+- **TypeScript**: Type-safe JavaScript
+- **Tailwind CSS**: Utility-first CSS framework
+- **Shadcn/ui**: Component library
 
-### Event Types
+### Infrastructure
+- **Kubernetes 1.28+**: Container orchestration
+- **Dapr 1.12+**: Distributed application runtime
+- **Apache Kafka**: Event streaming (via Strimzi)
+- **PostgreSQL 15+**: Relational database
+- **NGINX**: Ingress controller
+- **Docker**: Containerization
 
-```json
-// TodoCreatedEvent
-{
-  "eventId": "uuid",
-  "eventType": "TodoCreated",
-  "aggregateId": "todo-123",
-  "data": {
-    "title": "Buy groceries",
-    "description": "Milk, eggs"
-  },
-  "timestamp": "2025-12-31T10:00:00Z"
-}
+## Development
 
-// TodoCompletedEvent
-{
-  "eventId": "uuid",
-  "eventType": "TodoCompleted",
-  "aggregateId": "todo-123",
-  "data": {
-    "completedBy": "user-456"
-  },
-  "timestamp": "2025-12-31T14:30:00Z"
-}
+### Local Development Setup
+
+See [Local Development Guide](docs/local-development.md) for detailed instructions.
+
+**Quick start**:
+```bash
+# Backend API
+cd services/backend-api
+python -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+uvicorn main:app --reload
+
+# Frontend
+cd services/frontend
+npm install
+npm run dev
 ```
 
-## Dapr Architecture
+### Running Tests
 
-### Services with Dapr Sidecars
+```bash
+# Backend tests
+cd services/backend-api
+pytest
 
-```
-[Frontend] --(HTTP)--> [Frontend Dapr Sidecar]
-                                      |
-                                      v
-[Backend Service] <--(gRPC)--> [Backend Dapr Sidecar] --(Pub/Sub)--> [Kafka]
-                                     |
-                                     v
-                                  [Dapr State Store (Redis)]
-                                     |
-                                     v
-                                  [Dapr Secret Store]
+# Frontend tests
+cd services/frontend
+npm test
 ```
 
-### Dapr Capabilities Used
+### Code Quality
 
-1. **Service Invocation**
-   ```python
-   # Call backend service
-   dapr.invoke_method(
-       app_id='todo-backend',
-       method_name='create-todo',
-       data=todo_data
-   )
-   ```
+```bash
+# Backend
+black src/
+isort src/
+flake8 src/
+mypy src/
 
-2. **Pub/Sub**
-   ```python
-   # Publish event
-   dapr.publish_event(
-       pubsub_name='kafka-pubsub',
-       topic='todo-events',
-       data=event_data
-   )
-   ```
-
-3. **State Management**
-   ```python
-   # Save state
-   dapr.save_state(
-       store_name='redis-store',
-       key='todo-123',
-       value=todo_data
-   )
-   ```
-
-4. **Secret Management**
-   ```python
-   # Get secret
-   secret = dapr.get_secret(
-       secret_store_name='kubernetes',
-       key='database-password'
-   )
-   ```
-
-## CI/CD Pipeline (GitHub Actions)
-
-### Build & Push
-```yaml
-name: Build and Push
-on:
-  push:
-    branches: [main]
-
-jobs:
-  build:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - name: Build Docker images
-        run: |
-          docker build -t todo-backend:${{ github.sha }} ./backend
-          docker build -t todo-frontend:${{ github.sha }} ./frontend
-      - name: Push to registry
-        run: |
-          docker push todo-backend:${{ github.sha }}
-          docker push todo-frontend:${{ github.sha }}
+# Frontend
+npm run lint
+npm run format
+npm run type-check
 ```
 
-### Deploy to Production
-```yaml
-name: Deploy
-on:
-  push:
-    tags: ['v*']
+## API Documentation
 
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Update ArgoCD app
-        run: |
-          argocd app sync todo-app
-          argocd app wait todo-app
-```
+Interactive API documentation available at:
+- **Swagger UI**: http://localhost:8000/docs
+- **ReDoc**: http://localhost:8000/redoc
+
+See [API Reference](docs/api-reference.md) for complete documentation.
 
 ## Monitoring & Observability
 
-### Prometheus + Grafana Stack
+### Health Checks
+
+All services expose health endpoints:
+```bash
+curl http://taskai.local/health
+```
+
+### Logs
 
 ```bash
-# Deploy Prometheus Operator
-kubectl apply -f monitoring/prometheus-operator/
+# View service logs
+kubectl logs -f deployment/backend-api -n taskai
 
-# Deploy Grafana
-kubectl apply -f monitoring/grafana/
+# View Dapr sidecar logs
+kubectl logs -f deployment/backend-api -c daprd -n taskai
+
+# View all logs
+kubectl logs -f -l app=taskai -n taskai
+```
+
+### Metrics
+
+```bash
+# Install Prometheus + Grafana
+helm install prometheus prometheus-community/kube-prometheus-stack \
+  --namespace monitoring --create-namespace
 
 # Access Grafana
-kubectl port-forward svc/grafana 3000:80 -n monitoring
+kubectl port-forward -n monitoring svc/prometheus-grafana 3000:80
 ```
 
-### Key Metrics to Monitor
+## Scaling
 
-- **Application Metrics**
-  - Request rate (RPS)
-  - Error rate (5xx)
-  - Latency (p95, p99)
-  - Active connections
-
-- **Kafka Metrics**
-  - Message throughput
-  - Consumer lag
-  - Partition size
-  - Producer errors
-
-- **Dapr Metrics**
-  - Sidecar latency
-  - Service invocation success rate
-  - Pub/sub message rate
-  - State operations
-
-- **Kubernetes Metrics**
-  - Pod restarts
-  - CPU/Memory usage
-  - Network traffic
-  - PVC usage
-
-### Alerting (Prometheus AlertManager)
-
-```yaml
-# Critical alerts
-- alert: HighErrorRate
-  expr: rate(http_requests_total{status=~"5.."}[5m]) > 0.05
-  annotations:
-    summary: "High error rate detected"
-
-- alert: KafkaConsumerLag
-  expr: kafka_consumergroup_lag > 1000
-  annotations:
-    summary: "Kafka consumer lag is high"
-
-- alert: PodNotReady
-  expr: kube_pod_status_ready{condition="true"} == 0
-  annotations:
-    summary: "Pod is not ready"
-```
-
-## Disaster Recovery & Backup
-
-### Backup Strategy
-
-1. **Database Backups**
-   - Automated daily snapshots
-   - Point-in-time recovery
-   - Cross-region replication
-
-2. **Kafka Data Backup**
-   - Mirror topics to DR cluster
-   - Retention policy: 30 days
-   - Regular compaction
-
-3. **Kubernetes Backups**
-   - Velero for cluster backups
-   - Etcd snapshots
-   - Config/Secret backup
-
-### Rollback Procedure
+### Horizontal Pod Autoscaler
 
 ```bash
-# ArgoCD rollback
-argocd app sync todo-app --revision <previous-commit>
+# Auto-scale backend-api based on CPU
+kubectl autoscale deployment backend-api \
+  --cpu-percent=70 \
+  --min=2 \
+  --max=10 \
+  -n taskai
 
-# Manual Kubernetes rollback
-kubectl rollout undo deployment/todo-backend
+# View HPA status
+kubectl get hpa -n taskai
+```
 
-# Kafka topic reset (if needed)
-kubectl delete kafkatopic todo-events -n kafka
-kubectl apply -f k8s/kafka/topics.yaml
+### Manual Scaling
+
+```bash
+# Scale to 5 replicas
+kubectl scale deployment backend-api --replicas=5 -n taskai
 ```
 
 ## Security
 
-### Zero Trust Architecture
+- **Authentication**: JWT-based with secure token handling
+- **Secrets Management**: Kubernetes Secrets, encrypted at rest
+- **Network Security**: Service-to-service via ClusterIP only
+- **Dapr mTLS**: Automatic mutual TLS between services
+- **HTTPS**: TLS termination at ingress (production)
 
-- **mTLS**: Mutual TLS for all service communication
-- **RBAC**: Strict role-based access control
-- **Network Policies**: Default deny all
-- **Secrets**: Encrypted at rest and in transit
+## Troubleshooting
 
-### Compliance
+### Common Issues
 
-- **Audit Logging**: All actions logged
-- **Data Encryption**: AES-256 for sensitive data
-- **PII Protection**: Data masking for logs
-- **SOC2 Ready**: Security controls in place
-
-## Cost Optimization
-
-### DigitalOcean Costs
-
-- **DOKS Cluster**: $120/month (3x s-4vcpu-8gb)
-- **Load Balancer**: $20/month
-- **Block Storage**: $0.10/GB/month
-- **Kafka**: Included in cluster (or $60/month external)
-
-### Optimization Strategies
-
-1. **Auto-scaling**
-   ```yaml
-   clusterAutoscaler:
-     enabled: true
-     minNodes: 2
-     maxNodes: 5
-   ```
-
-2. **Spot Instances** (if supported)
-3. **Resource Limits**: Prevent over-provisioning
-4. **Image Optimization**: Multi-stage builds
-
-## Performance Tuning
-
-### Kafka Tuning
-
-```yaml
-# Producer optimization
-acks: all
-compression.type: lz4
-linger.ms: 10
-batch.size: 32768
-
-# Consumer optimization
-fetch.min.bytes: 1024
-max.poll.records: 500
-fetch.max.wait.ms: 500
+**Pods not starting**:
+```bash
+kubectl describe pod <pod-name> -n taskai
+kubectl logs <pod-name> -n taskai
 ```
 
-### Dapr Tuning
-
-```yaml
-apiVersion: dapr.io/v1alpha1
-kind: Configuration
-metadata:
-  name: dapr-config
-spec:
-  tracing:
-    samplingRate: "1"
-  featureFlags:
-    name: "enableGracefulShutdown"
-    enabled: true
+**Service connectivity**:
+```bash
+kubectl get endpoints -n taskai
+kubectl get svc -n taskai
 ```
 
-## Multi-Region Deployment
-
-### Active-Active Setup
-
-```
-Region A (nyc1)    Region B (sfo1)
-     |                    |
-[App Cluster]        [App Cluster]
-     |                    |
-[Event Bus A]  <--->  [Event Bus B]
-     |                    |
-[Database A]          [Database B]
+**Kafka issues**:
+```bash
+kubectl get kafka taskai-kafka -n taskai
+kubectl logs -l strimzi.io/name=taskai-kafka-kafka -n taskai
 ```
 
-### Cross-Region Replication
+See [Deployment Guide](docs/deployment-guide.md) for detailed troubleshooting.
 
-- Kafka MirrorMaker 2.0
-- Database replication (PostgreSQL)
-- DNS round-robin or geo-routing
-- Session affinity if needed
+## Cleanup
 
-## Testing
-
-### Chaos Engineering
+### Remove Deployment
 
 ```bash
-# Install Chaos Mesh
-kubectl apply -f https://mirrors.chaos-mesh.org/v1.3.0/install.yaml
-
-# Test pod failure
-kubectl apply -f chaos/pod-kill-experiment.yaml
-
-# Test network partition
-kubectl apply -f chaos/network-partition.yaml
+cd infrastructure/scripts
+./teardown.sh local   # For Minikube
+./teardown.sh prod    # For cloud
 ```
 
-### Load Testing
+### Complete Cleanup
 
 ```bash
-# Use k6 or Locust
-k6 run scripts/load-test.js
+# Delete namespace
+kubectl delete namespace taskai
 
-# Test metrics
-- Target: 1000 RPS
-- P95 latency: < 100ms
-- Error rate: < 0.1%
+# Stop Minikube
+minikube stop
+
+# Delete Minikube cluster
+minikube delete
 ```
 
 ## Documentation
 
-- [Kafka Documentation](https://kafka.apache.org/documentation/)
-- [Dapr Documentation](https://docs.dapr.io/)
-- [DigitalOcean DOKS Docs](https://docs.digitalocean.com/products/kubernetes/)
-- [ArgoCD Documentation](https://argoproj.github.io/argo-cd/)
+- [Architecture Overview](docs/architecture.md)
+- [API Reference](docs/api-reference.md)
+- [Deployment Guide](docs/deployment-guide.md)
+- [Local Development](docs/local-development.md)
+- [MCP Tools Guide](docs/mcp-tools.md)
 
-## Cleanup
+## Contributing
 
-```bash
-# Delete ArgoCD application
-argocd app delete todo-app
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'feat: add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-# Delete DOKS cluster
-doctl kubernetes cluster delete todo-app-cluster
+## License
 
-# Remove local tools (optional)
-dapr uninstall --kubernetes
-```
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Support
+
+- **Documentation**: https://docs.taskai.local
+- **Issues**: https://github.com/your-org/taskai/issues
+- **Email**: support@taskai.local
 
 ---
 
-**Total Project Points: 1,000**
-**Estimated Completion: January 18, 2026**
+**Built with ❤️ using FastAPI, Next.js, Kubernetes, Dapr, and Kafka**

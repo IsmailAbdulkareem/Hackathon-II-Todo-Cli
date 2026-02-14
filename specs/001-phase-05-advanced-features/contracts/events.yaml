@@ -1,0 +1,364 @@
+# Event Contracts: TaskAI Event-Driven Architecture
+
+**Feature**: Phase 5 Part A - Advanced Task Management Features
+**Date**: 2026-02-14
+**Message Broker**: Apache Kafka (Redpanda local, Strimzi K8s)
+
+## Overview
+
+This document defines the event schemas for TaskAI's event-driven architecture. Events are published to Kafka topics and consumed by microservices for asynchronous processing.
+
+## Topics
+
+### Topic: `task-events`
+
+**Purpose**: Task lifecycle events for recurring task automation
+**Producers**: Backend API
+**Consumers**: Recurring Service
+**Partitioning**: By user_id (ensures ordered processing per user)
+**Retention**: 7 days
+
+### Topic: `reminders`
+
+**Purpose**: Scheduled reminder notifications
+**Producers**: Backend API (via Dapr Jobs API)
+**Consumers**: Notification Service
+**Partitioning**: By user_id
+**Retention**: 7 days
+
+### Topic: `task-updates` (Optional)
+
+**Purpose**: Real-time task updates for frontend synchronization
+**Producers**: Backend API
+**Consumers**: Frontend (via WebSocket gateway)
+**Partitioning**: By user_id
+**Retention**: 1 hour (short-lived)
+
+---
+
+## Event Schemas
+
+### Event: TaskCreated
+
+**Topic**: `task-events`
+**Event Type**: `task.created`
+
+```json
+{
+  "event_id": "uuid",
+  "event_type": "task.created",
+  "timestamp": "2026-02-14T10:30:00Z",
+  "user_id": "uuid",
+  "task": {
+    "id": "uuid",
+    "title": "string",
+    "description": "string | null",
+    "completed": false,
+    "priority": "Low | Medium | High",
+    "due_date": "datetime | null",
+    "is_recurring": false,
+    "parent_task_id": "uuid | null",
+    "recurrence_rule": {
+      "id": "uuid",
+      "recurrence_type": "daily | weekly | monthly | yearly | custom",
+      "interval": 1,
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6] | null,
+      "day_of_month": 1-31 | null,
+      "month_of_year": 1-12 | null,
+      "custom_pattern": "string | null"
+    } | null,
+    "tags": ["string"],
+    "created_at": "datetime",
+    "updated_at": "datetime"
+  }
+}
+```
+
+**Consumer Actions**:
+- Recurring Service: No action (task not completed yet)
+- Audit Service: Log creation event
+
+---
+
+### Event: TaskUpdated
+
+**Topic**: `task-events`
+**Event Type**: `task.updated`
+
+```json
+{
+  "event_id": "uuid",
+  "event_type": "task.updated",
+  "timestamp": "2026-02-14T10:35:00Z",
+  "user_id": "uuid",
+  "task_id": "uuid",
+  "changes": {
+    "title": "new value | null",
+    "description": "new value | null",
+    "priority": "Low | Medium | High | null",
+    "due_date": "datetime | null",
+    "tags_added": ["string"],
+    "tags_removed": ["string"]
+  },
+  "task": {
+    "id": "uuid",
+    "title": "string",
+    "description": "string | null",
+    "completed": false,
+    "priority": "Low | Medium | High",
+    "due_date": "datetime | null",
+    "is_recurring": false,
+    "parent_task_id": "uuid | null",
+    "tags": ["string"],
+    "updated_at": "datetime"
+  }
+}
+```
+
+**Consumer Actions**:
+- Recurring Service: Update recurrence rule if changed
+- Frontend: Real-time UI update
+
+---
+
+### Event: TaskCompleted
+
+**Topic**: `task-events`
+**Event Type**: `task.completed`
+
+```json
+{
+  "event_id": "uuid",
+  "event_type": "task.completed",
+  "timestamp": "2026-02-14T11:00:00Z",
+  "user_id": "uuid",
+  "task": {
+    "id": "uuid",
+    "title": "string",
+    "description": "string | null",
+    "completed": true,
+    "priority": "Low | Medium | High",
+    "due_date": "datetime | null",
+    "is_recurring": true,
+    "parent_task_id": "uuid | null",
+    "recurrence_rule": {
+      "id": "uuid",
+      "recurrence_type": "daily | weekly | monthly | yearly | custom",
+      "interval": 1,
+      "days_of_week": [0, 1, 2, 3, 4, 5, 6] | null,
+      "day_of_month": 1-31 | null,
+      "month_of_year": 1-12 | null,
+      "custom_pattern": "string | null"
+    } | null,
+    "tags": ["string"],
+    "completed_at": "datetime"
+  }
+}
+```
+
+**Consumer Actions**:
+- **Recurring Service**: If `is_recurring` is true, calculate next occurrence and create new task instance
+- Audit Service: Log completion event
+
+**Processing Logic** (Recurring Service):
+```python
+if event.task.is_recurring and event.task.recurrence_rule:
+    next_occurrence = calculate_next_occurrence(
+        event.task.recurrence_rule,
+        event.task.completed_at
+    )
+
+    new_task = create_task({
+        "title": event.task.title,
+        "description": event.task.description,
+        "priority": event.task.priority,
+        "due_date": next_occurrence,
+        "is_recurring": True,
+        "parent_task_id": event.task.parent_task_id or event.task.id,
+        "recurrence_rule_id": event.task.recurrence_rule.id,
+        "tags": event.task.tags
+    })
+
+    # Publish TaskCreated event for new instance
+```
+
+---
+
+### Event: TaskDeleted
+
+**Topic**: `task-events`
+**Event Type**: `task.deleted`
+
+```json
+{
+  "event_id": "uuid",
+  "event_type": "task.deleted",
+  "timestamp": "2026-02-14T11:15:00Z",
+  "user_id": "uuid",
+  "task_id": "uuid",
+  "delete_series": false,
+  "parent_task_id": "uuid | null"
+}
+```
+
+**Consumer Actions**:
+- Recurring Service: If `delete_series` is true, delete all future instances
+- Audit Service: Log deletion event
+
+---
+
+### Event: ReminderScheduled
+
+**Topic**: `reminders`
+**Event Type**: `reminder.scheduled`
+
+```json
+{
+  "event_id": "uuid",
+  "event_type": "reminder.scheduled",
+  "timestamp": "2026-02-14T10:30:00Z",
+  "user_id": "uuid",
+  "reminder": {
+    "id": "uuid",
+    "task_id": "uuid",
+    "task_title": "string",
+    "scheduled_time": "2026-02-14T14:45:00Z",
+    "reminder_type": "15min | 1hr | 1day | 1week | custom",
+    "user_email": "string"
+  }
+}
+```
+
+**Consumer Actions**:
+- **Notification Service**: Send email notification at scheduled time
+- Retry with exponential backoff if delivery fails (3 attempts: 0s, 5min, 15min)
+
+**Processing Logic** (Notification Service):
+```python
+async def handle_reminder(event: ReminderScheduled):
+    attempt = 1
+    max_attempts = 3
+    backoff_delays = [0, 300, 900]  # 0s, 5min, 15min
+
+    while attempt <= max_attempts:
+        try:
+            await send_email(
+                to=event.reminder.user_email,
+                subject=f"Reminder: {event.reminder.task_title}",
+                body=f"Your task '{event.reminder.task_title}' is due soon."
+            )
+
+            # Log successful delivery
+            await log_notification(
+                reminder_id=event.reminder.id,
+                status="sent",
+                attempt=attempt
+            )
+            break
+
+        except EmailDeliveryError as e:
+            # Log failed attempt
+            await log_notification(
+                reminder_id=event.reminder.id,
+                status="failed" if attempt == max_attempts else "retrying",
+                attempt=attempt,
+                error=str(e)
+            )
+
+            if attempt < max_attempts:
+                await asyncio.sleep(backoff_delays[attempt])
+
+            attempt += 1
+```
+
+---
+
+### Event: ReminderDelivered
+
+**Topic**: `reminders`
+**Event Type**: `reminder.delivered`
+
+```json
+{
+  "event_id": "uuid",
+  "event_type": "reminder.delivered",
+  "timestamp": "2026-02-14T14:45:05Z",
+  "user_id": "uuid",
+  "reminder_id": "uuid",
+  "task_id": "uuid",
+  "delivery_status": "sent | failed",
+  "attempt_number": 1,
+  "error_message": "string | null"
+}
+```
+
+**Consumer Actions**:
+- Backend API: Update reminder status in database
+- Audit Service: Log delivery status
+
+---
+
+## Event Ordering Guarantees
+
+### Per-User Ordering
+- All events for a single user are published to the same partition (partitioned by `user_id`)
+- Kafka guarantees ordering within a partition
+- Consumers process events in order per user
+
+### Cross-User Ordering
+- No ordering guarantees across different users
+- Events for different users can be processed in parallel
+
+---
+
+## Error Handling
+
+### Producer Errors
+- **Kafka Unavailable**: Retry with exponential backoff (3 attempts)
+- **Serialization Error**: Log error and skip event (should not happen with schema validation)
+- **Partition Full**: Wait and retry (Kafka will auto-expand if configured)
+
+### Consumer Errors
+- **Deserialization Error**: Log error, skip event, continue processing
+- **Processing Error**: Log error, retry with exponential backoff (3 attempts), then dead-letter queue
+- **Duplicate Event**: Idempotent processing (check event_id before processing)
+
+---
+
+## Monitoring and Observability
+
+### Metrics
+- **Producer Metrics**:
+  - Events published per topic
+  - Publish latency (p50, p95, p99)
+  - Publish errors
+
+- **Consumer Metrics**:
+  - Events consumed per topic
+  - Processing latency (p50, p95, p99)
+  - Processing errors
+  - Consumer lag (events behind)
+
+### Tracing
+- Distributed tracing with Dapr automatic trace propagation
+- Trace ID included in event metadata
+- End-to-end tracing from API request → event publish → event consume → action complete
+
+---
+
+## Schema Evolution
+
+### Backward Compatibility
+- New fields can be added (consumers ignore unknown fields)
+- Existing fields cannot be removed or renamed
+- Field types cannot be changed
+
+### Versioning Strategy
+- Include `schema_version` in event metadata
+- Consumers check version and handle accordingly
+- Support N-1 version compatibility (current + previous)
+
+---
+
+**Event Contracts Complete**: 2026-02-14
+**Next Step**: Create quickstart.md for local development setup
