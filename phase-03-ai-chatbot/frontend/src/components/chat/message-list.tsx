@@ -158,9 +158,9 @@ export function MessageList({ conversationId, newMessages = [] }: MessageListPro
 
       {/* Messages */}
       <div className="space-y-4 p-4">
-        {messages.map((message) => (
+        {messages.map((message, index) => (
           <div
-            key={message.id}
+            key={`${message.id}-${index}`}
             className={`flex gap-3 ${
               message.role === "user" ? "justify-end" : "justify-start"
             }`}
