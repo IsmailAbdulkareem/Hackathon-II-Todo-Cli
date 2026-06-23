@@ -1,8 +1,8 @@
-"""Simple CLI chatbot for testing OpenAI integration and task management."""
+"""Simple CLI chatbot for testing Groq integration and task management."""
 import asyncio
 import os
 from dotenv import load_dotenv
-from openai import AsyncOpenAI
+from groq import AsyncGroq
 from sqlmodel import Session, select
 from src.core.database import engine
 from src.models.task import Task
@@ -10,8 +10,8 @@ from src.models.user import User
 
 load_dotenv()
 
-# Initialize OpenAI client
-client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
+# Initialize Groq client
+client = AsyncGroq(api_key=os.getenv("GROQ_API_KEY"))
 
 # Test user ID (you can change this to your actual user ID)
 TEST_USER_ID = None
@@ -73,10 +73,10 @@ async def list_tasks_tool(status: str = "all") -> dict:
         return {"success": False, "error": str(e)}
 
 
-async def chat_with_openai(user_message: str, conversation_history: list) -> str:
-    """Send message to OpenAI and get response."""
+async def chat_with_groq(user_message: str, conversation_history: list) -> str:
+    """Send message to Groq and get response."""
 
-    # Define tools for OpenAI
+    # Define tools for Groq
     tools = [
         {
             "type": "function",
@@ -128,9 +128,9 @@ async def chat_with_openai(user_message: str, conversation_history: list) -> str
     messages.extend(conversation_history)
     messages.append({"role": "user", "content": user_message})
 
-    # Call OpenAI
+    # Call Groq
     response = await client.chat.completions.create(
-        model="gpt-4o-mini",
+        model=os.environ["GROQ_MODEL"],
         messages=messages,
         tools=tools,
         tool_choice="auto"
@@ -208,7 +208,7 @@ async def main():
 
         try:
             # Get AI response
-            response = await chat_with_openai(user_input, conversation_history)
+            response = await chat_with_groq(user_input, conversation_history)
 
             # Update conversation history
             conversation_history.append({"role": "user", "content": user_input})

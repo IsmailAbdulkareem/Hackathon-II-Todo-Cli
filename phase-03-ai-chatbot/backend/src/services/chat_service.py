@@ -1,10 +1,10 @@
-"""Chat service for managing conversations, messages, and OpenAI agent integration."""
+"""Chat service for managing conversations, messages, and Groq agent integration."""
 from datetime import datetime, timezone
 from typing import Optional, Any
 from uuid import UUID
 import logging
 from sqlmodel import Session, select, desc, func
-from openai import AsyncOpenAI
+from groq import AsyncGroq
 from src.models.conversation import Conversation
 from src.models.message import Message
 from src.core.config import settings
@@ -19,9 +19,9 @@ class ChatService:
     """Service for managing chat conversations and AI agent interactions."""
 
     def __init__(self):
-        """Initialize ChatService with OpenAI client."""
-        self.openai_client = AsyncOpenAI(api_key=settings.OPENAI_API_KEY)
-        self.model = settings.OPENAI_MODEL
+        """Initialize ChatService with Groq client."""
+        self.groq_client = AsyncGroq(api_key=settings.GROQ_API_KEY)
+        self.model = settings.GROQ_MODEL
         self.mcp_tools = mcp_server.get_tools()
 
     async def get_or_create_conversation(
@@ -138,7 +138,7 @@ class ChatService:
         conversation_history: list[Message]
     ) -> dict[str, Any]:
         """
-        Run OpenAI agent with conversation context and MCP tools.
+        Run Groq agent with conversation context and MCP tools.
 
         Args:
             user_id: User identifier (for tool invocations)
@@ -149,7 +149,7 @@ class ChatService:
             dict: {response: str, tool_calls: list}
         """
         try:
-            # Build messages for OpenAI API
+            # Build messages for Groq API
             messages = []
 
             # System message with instructions
@@ -218,7 +218,7 @@ class ChatService:
                 "content": user_message
             })
 
-            # Define tools for OpenAI function calling
+            # Define tools for Groq function calling
             tools = [
                 {
                     "type": "function",
@@ -346,16 +346,16 @@ class ChatService:
                 }
             ]
 
-            # Call OpenAI API with function calling - Loop until no more tool calls
+            # Call Groq API with function calling - Loop until no more tool calls
             tool_calls_made = []  # Initialize before loop
             max_iterations = 5  # Prevent infinite loops
             iteration = 0
 
             while iteration < max_iterations:
                 iteration += 1
-                logger.info(f"OpenAI API call iteration {iteration}")
+                logger.info(f"Groq API call iteration {iteration}")
 
-                response = await self.openai_client.chat.completions.create(
+                response = await self.groq_client.chat.completions.create(
                     model=self.model,
                     messages=messages,
                     tools=tools,
@@ -444,11 +444,11 @@ class ChatService:
                             "content": json.dumps({"error": f"Tool {tool_name} not found"})
                         })
 
-                # Loop continues - OpenAI will be called again with tool results
+                # Loop continues - Groq will be called again with tool results
 
             # If we hit max iterations, return what we have
             logger.warning(f"Hit max iterations ({max_iterations}), returning final response")
-            final_response = await self.openai_client.chat.completions.create(
+            final_response = await self.groq_client.chat.completions.create(
                 model=self.model,
                 messages=messages
             )
@@ -459,7 +459,7 @@ class ChatService:
             }
 
         except Exception as e:
-            logger.error(f"OpenAI agent error: {type(e).__name__}: {str(e)}", exc_info=True)
+            logger.error(f"Groq agent error: {type(e).__name__}: {str(e)}", exc_info=True)
             return {
                 "response": f"I encountered an error: {type(e).__name__}: {str(e)}. Please try again.",
                 "tool_calls": []

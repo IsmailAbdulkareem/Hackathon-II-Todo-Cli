@@ -80,7 +80,7 @@ async def send_chat_message(
     1. Validates user authentication and ownership
     2. Gets or creates conversation
     3. Loads conversation history (last 50 messages)
-    4. Runs OpenAI agent with MCP tools
+     4. Runs Groq agent with MCP tools
     5. Persists user and assistant messages
     6. Returns AI response
 
@@ -146,13 +146,13 @@ async def send_chat_message(
         )
         logger.info(f"Chat endpoint: Loaded {len(message_history)} messages for conversation_id={conversation.id}")
 
-        # Run OpenAI agent with conversation context
+        # Run Groq agent with conversation context
         agent_result = await chat_service.run_agent(
             user_id=jwt_user_id,
             user_message=request.message,
             conversation_history=message_history
         )
-        logger.info(f"Chat endpoint: OpenAI agent executed - {len(agent_result.get('tool_calls', []))} tool calls made")
+        logger.info(f"Chat endpoint: Groq agent executed - {len(agent_result.get('tool_calls', []))} tool calls made")
 
         # Persist user message
         await chat_service.save_message(

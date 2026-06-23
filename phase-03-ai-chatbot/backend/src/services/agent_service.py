@@ -1,4 +1,4 @@
-"""OpenAI Agents SDK implementation for task management chatbot."""
+"""Groq-powered task management chatbot (disabled - uses chat_service instead)."""
 from datetime import datetime, timezone
 from typing import Optional, Any
 from uuid import UUID
@@ -11,10 +11,10 @@ from src.services.mcp_server import mcp_server
 
 
 class TaskAgent:
-    """Task management agent using OpenAI Agents SDK."""
+    """Task management agent (requires OpenAI Agents SDK - disabled)."""
 
     def __init__(self):
-        """Initialize TaskAgent with OpenAI Agents SDK."""
+        """Initialize TaskAgent."""
         self.mcp_server = mcp_server
 
         # Define tools using function_tool decorator

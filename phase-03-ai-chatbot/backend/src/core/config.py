@@ -13,9 +13,9 @@ class Settings(BaseSettings):
     # JWT Authentication configuration
     BETTER_AUTH_SECRET: str
 
-    # OpenAI configuration (Phase 3: AI Chatbot)
-    OPENAI_API_KEY: str
-    OPENAI_MODEL: str = "gpt-4"
+    # Groq configuration (Phase 3: AI Chatbot)
+    GROQ_API_KEY: str
+    GROQ_MODEL: str
     MCP_SERVER_PORT: int = 8001
 
     model_config = SettingsConfigDict(
